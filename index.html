@@ -26,7 +26,7 @@
   #nav.solid { background: rgba(20,20,20,.96); box-shadow: 0 2px 20px rgba(0,0,0,.5); }
   .logo { font-weight: 900; letter-spacing: .5px; font-size: 22px; color: var(--accent); text-transform: uppercase;
           text-shadow: 0 2px 12px rgba(255,75,62,.35); white-space: nowrap; }
-  .logo span { color: var(--ink); font-weight: 700; }
+  .logo span { color: var(--ink); font-weight: 700; margin-left: .3em; }
   .pills { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; flex: 1; min-width: 0; }
   .pills::-webkit-scrollbar { display: none; }
   .pill { padding: 6px 14px; border: 1px solid #555; border-radius: 999px; font-size: 13px; color: #ddd; white-space: nowrap;
@@ -45,7 +45,9 @@
   @keyframes spin { to { transform: rotate(360deg); } }
 
   /* ---------------------------------------------------------------- hero */
-  #hero { position: relative; height: 78vh; min-height: 480px; max-height: 760px; overflow: hidden; }
+  /* The hero grows with its content (never taller content than box), and the top padding keeps text clear of the fixed navbar. */
+  #hero { position: relative; min-height: max(480px, 78vh); display: flex; align-items: flex-end; overflow: hidden;
+          padding: 130px var(--pad) max(70px, 13vh); }
   .hero-bg { position: absolute; inset: 0; opacity: 0; transition: opacity 1.1s ease; }
   .hero-bg.on { opacity: 1; }
   .hero-bg::before { content: ""; position: absolute; inset: -6%; background: var(--art); animation: kenburns 22s ease-in-out infinite alternate; }
@@ -55,11 +57,12 @@
   #hero::after { content: ""; position: absolute; inset: 0; pointer-events: none;
     background: linear-gradient(to right, rgba(20,20,20,.92) 0%, rgba(20,20,20,.55) 38%, rgba(20,20,20,0) 70%),
                 linear-gradient(to top, #141414 2%, rgba(20,20,20,0) 38%); }
-  .hero-body { position: absolute; z-index: 2; left: var(--pad); bottom: 17%; max-width: min(640px, 88vw); transition: opacity .45s, transform .6s var(--ease); }
+  .hero-body { position: relative; z-index: 2; max-width: min(640px, 88vw); transition: opacity .45s, transform .6s var(--ease); }
   .hero-body.swap { opacity: 0; transform: translateY(14px); }
   .eyebrow { display: flex; align-items: center; gap: 10px; font-size: 13px; letter-spacing: 3px; text-transform: uppercase; color: #d0d0d0; margin-bottom: 8px; }
   .eyebrow b { color: var(--accent); font-weight: 900; }
-  .hero-title { font-size: clamp(30px, 5.2vw, 62px); line-height: 1.04; font-weight: 800; margin: 0 0 6px; text-shadow: 0 3px 24px rgba(0,0,0,.6); }
+  .hero-title { font-size: clamp(28px, min(5.2vw, 8.5vh), 62px); line-height: 1.06; font-weight: 800; margin: 0 0 6px; text-shadow: 0 3px 24px rgba(0,0,0,.6);
+                display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .hero-co { font-size: clamp(15px, 1.7vw, 20px); color: #e5e5e5; margin-bottom: 12px; }
   .hero-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; font-size: 15px; }
   .match { color: var(--green); font-weight: 700; }
@@ -77,7 +80,7 @@
   .btn.play:hover { background: rgba(255,255,255,.8); }
   .btn.info { background: rgba(109,109,110,.7); color: #fff; }
   .btn.info:hover { background: rgba(109,109,110,.45); }
-  .dots { position: absolute; z-index: 3; right: var(--pad); bottom: 19%; display: flex; gap: 7px; }
+  .dots { position: absolute; z-index: 3; right: var(--pad); bottom: max(76px, 15vh); display: flex; gap: 7px; }
   .dot { width: 26px; height: 3px; background: rgba(255,255,255,.3); border-radius: 2px; overflow: hidden; position: relative; }
   .dot i { position: absolute; inset: 0; background: #fff; transform: scaleX(0); transform-origin: left; }
   .dot.done i { transform: scaleX(1); }
@@ -198,7 +201,7 @@
     #nav { gap: 10px; padding: 10px var(--pad); flex-wrap: wrap; }
     .logo { font-size: 17px; } .pills { order: 3; flex-basis: 100%; }
     .search.open input, .search:focus-within input { width: 140px; }
-    #hero { height: 70vh; } .hero-body { bottom: 12%; } .dots { display: none; }
+    #hero { min-height: 70vh; padding-top: 150px; padding-bottom: 60px; } .dots { display: none; }
     .arrow { display: none; } .track { padding-bottom: 36px; } .track-wrap { margin-bottom: 0; }
     .card .peek { display: none; } .row.in .card:hover { transform: none; box-shadow: none; }
     .sheet-body { grid-template-columns: 1fr; padding: 8px 20px 26px; } .sheet-hero .in { left: 20px; right: 20px; }
