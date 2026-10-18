@@ -14,6 +14,14 @@ Live: https://freelance.mahidhardurga.in
   `data/jobs.json` together with `index.html`. Remotive is only re-fetched every 6 hours (its docs ask for gentle use), and if a
   source fails its last good data is kept.
 
+## India-based jobs and location filters
+A second Himalayas source (`Himalayas India`) uses its public search API with the country filter for India, running a short list of
+queries (Java, Spring Boot, AI, DevOps, contract, ...). It is fetched at most every 2 hours. Every job also gets `india` (based in or
+explicitly for India, from the title, location field and first line only), `city`, `mode` (remote / hybrid / on-site) and `currency`.
+On the page: the **India-based** pill, plus a **Location & pay** menu for city, work mode and pay currency. The India rows ignore
+"Direct apply only" because their Apply links go through Himalayas and cannot be verified; each card says so.
+Honest limits: most listings are full-time and some come from staffing firms; Himalayas gives countries, not cities, so few jobs show a city.
+
 ## Apply links
 Each job is tagged by what Apply does: **direct** (straight to the employer or a contact: Hacker News, Remotive), **sign-up wall**
 (We Work Remotely, Jobicy) or **unverified** (Himalayas). The page shows direct-apply jobs by default. RemoteOK is deliberately not used,

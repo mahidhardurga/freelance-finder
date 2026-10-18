@@ -220,6 +220,70 @@ def money(n) -> str:
     return f"{n/1000:g}k" if n >= 1000 else f"{n:g}"
 
 
+def himalayas_pay(j: dict) -> str:
+    """'USD 120k-160k/yr', or lakhs for rupees ('₹15L/yr')."""
+    lo, hi, cur, per = j.get("minSalary"), j.get("maxSalary"), j.get("currency"), j.get("salaryPeriod") or "annual"
+    if not (lo and hi):
+        return ""
+    unit = {"annual": "yr", "hourly": "hr", "monthly": "mo", "weekly": "wk", "daily": "day"}.get(per, per[:2])
+    if cur == "INR":
+        def inr(n: float) -> str:
+            return f"₹{n / 100000:g}L" if n >= 100000 else f"₹{n / 1000:g}k" if n >= 1000 else f"₹{n:g}"
+        a, b = inr(float(lo)), inr(float(hi))
+    else:
+        a, b = f"{cur or ''} {money(lo)}".strip(), money(hi)
+    return f"{a}/{unit}" if a == b else f"{a}-{b}/{unit}"
+
+
+# --------------------------------------------------------------------------- India: place, work mode, pay currency
+INDIA_CITIES = {
+    "Bengaluru": r"bengaluru|bangalore", "Hyderabad": r"hyderabad|secunderabad", "Pune": r"\bpune\b", "Chennai": r"\bchennai\b",
+    "Mumbai": r"\bmumbai\b|navi mumbai|\bthane\b", "Delhi NCR": r"\b(new )?delhi\b|gurgaon|gurugram|\bnoida\b|ghaziabad|faridabad",
+    "Kolkata": r"\bkolkata\b|calcutta", "Ahmedabad": r"\bahmedabad\b|gandhinagar",
+    "Kochi / Kerala": r"\bkochi\b|cochin|trivandrum|thiruvananthapuram|\bkerala\b|technopark|infopark", "Coimbatore": r"\bcoimbatore\b",
+    "Jaipur": r"\bjaipur\b", "Indore": r"\bindore\b", "Chandigarh": r"chandigarh|mohali|panchkula",
+}
+INDIA_CITIES_RE = {city: re.compile(rx, re.I) for city, rx in INDIA_CITIES.items()}
+NOT_INDIA_RE = re.compile(r"\b(outside|not|except|excluding|non)[- ]india\b", re.I)
+INDIA_WORD_RE = re.compile(r"\bindia\b", re.I)
+
+
+def detect_india(title: str, location: str, text: str) -> tuple[bool, str | None]:
+    """(is the job based in / explicitly for India, its city or None). Only the title, the location field and the
+    posting's first line count, so a global company that merely lists an Indian office further down is not tagged."""
+    head = f"{title} | {location} | {text.split(chr(10))[0][:300]}"
+    if NOT_INDIA_RE.search(head):
+        return False, None
+    india_word = bool(INDIA_WORD_RE.search(head))
+    scope = head + (" " + text[:1200] if INDIA_WORD_RE.search(location) else "")   # known India job: look for its city a bit deeper
+    city = next((c for c, rx in INDIA_CITIES_RE.items() if rx.search(scope)), None)
+    return bool(city) or india_word, city
+
+
+def detect_mode(location: str, text: str) -> str:
+    blob = f"{location} {text[:1500]}"
+    remote = re.search(r"\bremote\b|work from home|\bwfh\b|anywhere|worldwide|distributed", blob, re.I)
+    if re.search(r"\bhybrid\b", blob, re.I):
+        return "hybrid"
+    if re.search(r"\bon-?site\b|work from office|\bwfo\b|in[- ]office|relocat", blob, re.I) and not remote:
+        return "onsite"
+    return "remote" if remote else ""
+
+
+CURRENCY_PATTERNS = (("INR", r"₹|\binr\b|\brs\.?\s?\d|\blpa\b|\blakhs?\b|\bcrores?\b"), ("USD", r"\$\s?\d|\busd\b|us\$"),
+                     ("GBP", r"£|\bgbp\b"), ("EUR", r"€|\beur\b"))
+
+
+def detect_currency(pay: str, text: str) -> str | None:
+    """Currency of the stated pay (or of money mentioned in the post when no pay field exists); None when unknown."""
+    s = pay or text[:600]
+    for code, rx in CURRENCY_PATTERNS:
+        if re.search(rx, s, re.I):
+            return code
+    m = re.match(r"\s*([A-Z]{3})\b", pay or "")
+    return m.group(1) if m else None
+
+
 def fix_mojibake(s: str) -> str:
     for enc in ("latin-1", "cp1252"):
         try:
@@ -241,8 +305,10 @@ def make_job(*, source, title, company, url, posted, text, job_type="", location
     if anywhere is None:
         loc_ok = not location or ANYWHERE_RE.search(location) is not None
         anywhere = loc_ok and not RESTRICTED_RE.search(f"{location} {text[:1500]}")
+    india, city = detect_india(title, location, text)
     return {
         "id": url, "source": source, "title": title.strip()[:160], "company": (company or "").strip()[:80],
+        "india": india, "city": city, "mode": detect_mode(location, text), "currency": detect_currency(pay, text),
         "url": url, "posted": posted, "type": job_type or ("Contract / freelance" if freelance else ""),
         "location": location, "pay": pay, "usd": bool(usd), "anywhere": bool(anywhere),
         "freelance": bool(freelance), "dev": core >= MIN_CORE, "fit": fit, "matched": matched, "blocked": blocked,
@@ -291,23 +357,49 @@ def src_jobicy():
     return out
 
 
+def himalayas_job(j: dict, source: str) -> dict:
+    pay, cur = himalayas_pay(j), j.get("currency")
+    restr = j.get("locationRestrictions") or []
+    return make_job(
+        source=source, title=j.get("title", ""), company=j.get("companyName"),
+        url=j.get("applicationLink") or j.get("guid"), posted=to_epoch(j.get("pubDate")),
+        text=strip_html(j.get("description") or j.get("excerpt")), job_type=j.get("employmentType") or "",
+        location=", ".join(restr) if restr else "Worldwide", pay=pay, usd=(cur == "USD") if pay else None,
+        anywhere=not restr)
+
+
 def src_himalayas():
     out, cursor = [], None
     for _ in range(5):
         data = get_json("https://himalayas.app/jobs/api?limit=20" + (f"&cursor={urllib.parse.quote(str(cursor))}" if cursor else ""))
-        for j in data.get("jobs", []):
-            lo, hi, cur = j.get("minSalary"), j.get("maxSalary"), j.get("currency")
-            pay = f"{cur} {money(lo)}-{money(hi)}/{(j.get('salaryPeriod') or 'yr')[:2]}" if lo and hi else ""
-            restr = j.get("locationRestrictions") or []
-            out.append(make_job(
-                source="Himalayas", title=j.get("title", ""), company=j.get("companyName"),
-                url=j.get("applicationLink") or j.get("guid"), posted=to_epoch(j.get("pubDate")),
-                text=strip_html(j.get("description") or j.get("excerpt")), job_type=j.get("employmentType") or "",
-                location=", ".join(restr) if restr else "Worldwide", pay=pay, usd=(cur == "USD") if pay else None,
-                anywhere=not restr))
+        out += [himalayas_job(j, "Himalayas") for j in data.get("jobs", [])]
         cursor = data.get("nextCursor")
         if not cursor:
             break
+    return out
+
+
+# India-located jobs from the same public API, using its country filter. Kept gentle: one page of 20 per query, short pauses,
+# and the result is reused for 2 hours (SOURCE_TTL), so this is roughly ten requests every two hours.
+INDIA_QUERIES = ["java", "spring boot", "microservices", "backend", "python", "ai engineer", "llm", "devops", "full stack", "contract"]
+
+
+def src_himalayas_india():
+    out, seen, failures = [], set(), 0
+    for q in INDIA_QUERIES:
+        try:
+            data = get_json("https://himalayas.app/jobs/api/search?country=IN&limit=20&q=" + urllib.parse.quote(q))
+        except Exception:
+            failures += 1
+            continue
+        for j in data.get("jobs", []):
+            key = j.get("guid") or j.get("applicationLink")
+            if key and key not in seen:
+                seen.add(key)
+                out.append(himalayas_job(j, "Himalayas India"))
+        time.sleep(0.4)
+    if not out and failures:
+        raise RuntimeError(f"all {failures} India queries failed")
     return out
 
 
@@ -378,6 +470,7 @@ SOURCES = {
     "Remotive": src_remotive,
     "Jobicy": src_jobicy,
     "Himalayas": src_himalayas,
+    "Himalayas India": src_himalayas_india,
 }
 
 # --------------------------------------------------------------------------- aggregation + cache
@@ -391,17 +484,18 @@ SOURCE_LABELS = {
     "Remotive": ["Remotive"],
     "Jobicy": ["Jobicy"],
     "Himalayas": ["Himalayas"],
+    "Himalayas India": ["Himalayas India"],
 }
 # What happens when you press Apply (checked by following the real Apply buttons, 2026-10-18):
 #   direct  - goes straight to the employer / contact details, no account
 #   signup  - the board puts a sign-in / sign-up wall in front of Apply (We Work Remotely, Jobicy)
 #   unknown - could not be verified (Himalayas sits behind a bot check)
 APPLY_MODE = {"HN Who's Hiring": "direct", "HN Freelancer": "direct", "Remotive": "direct",
-              "We Work Remotely": "signup", "Jobicy": "signup", "Himalayas": "unknown"}
+              "We Work Remotely": "signup", "Jobicy": "signup", "Himalayas": "unknown", "Himalayas India": "unknown"}
 # Bump when the job fields change, so old published rows are never mixed with new ones.
-SCHEMA = 4
+SCHEMA = 5
 # Sources that ask for gentle use are only re-fetched this often (seconds); between fetches the previous results are reused.
-SOURCE_TTL = {"Remotive": 6 * 3600}
+SOURCE_TTL = {"Remotive": 6 * 3600, "Himalayas India": 2 * 3600}
 
 
 def fetch_all(prev: dict | None = None) -> dict:

@@ -69,6 +69,7 @@
   .tag { border: 1px solid rgba(255,255,255,.4); padding: 1px 7px; border-radius: 3px; font-size: 12px; color: #ddd; }
   .tag.usd { border-color: var(--green); color: var(--green); }
   .tag.block { border-color: #ff6b6b; color: #ff8a80; }
+  .tag.india { border-color: #ffb74d; color: #ffcc80; }
   .tag.direct { border-color: var(--green); color: var(--green); }
   .tag.signup { border-color: #e0a030; color: #e8b755; }
   /* site filter dropdown */
@@ -246,6 +247,8 @@
   <div class="pills" role="group" aria-label="Filters">
     <button class="pill" id="sitesBtn" aria-haspopup="true" aria-expanded="false" aria-controls="sitesMenu">Sites ▾</button>
     <button class="pill" id="stackBtn" aria-haspopup="true" aria-expanded="false" aria-controls="stackMenu" title="Filter by technology: Java, Spring Boot, Kafka, AWS, LLM and more">Tech stack ▾</button>
+    <button class="pill" data-f="india" aria-pressed="false" title="Only jobs based in India or explicitly open to India">India-based</button>
+    <button class="pill" id="whereBtn" aria-haspopup="true" aria-expanded="false" aria-controls="whereMenu" title="Filter by city, work mode (remote / hybrid / on-site) and pay currency">Location &amp; pay ▾</button>
     <button class="pill" data-f="anywhere" aria-pressed="false">Work from anywhere</button>
     <button class="pill" data-f="usd" aria-pressed="false">USD pay</button>
     <button class="pill" data-f="contract" aria-pressed="false">Contract only</button>
@@ -294,7 +297,7 @@ function setIcon(node, name) { node.replaceChildren(icon(name)); }
 /* ------------------------------------------------------------------ state + persistence */
 const SEEN_KEY = "ff_seen_v1", LIST_KEY = "ff_list_v2";
 let data = null, seen = new Set(), list = {}, firstRun = true;
-const filters = { anywhere: false, usd: false, contract: false, email: false, restricted: false, direct: true, sites: null, stack: new Set(), stackAll: false };   // sites: null = every site, else a Set of site names
+const filters = { anywhere: false, usd: false, contract: false, email: false, restricted: false, direct: true, sites: null, stack: new Set(), stackAll: false, india: false, where: { cities: new Set(), modes: new Set(), currencies: new Set() } };   // sites: null = every site, else a Set of site names
 const siteOk = j => !filters.sites || filters.sites.has(j.source);
 // Tech stack filter: "any" = job mentions at least one selected technology, "all" = it mentions every one of them.
 const stackOk = j => {
@@ -302,6 +305,18 @@ const stackOk = j => {
   const t = j.tech || [], sel = [...filters.stack];
   return filters.stackAll ? sel.every(s => t.includes(s)) : sel.some(s => t.includes(s));
 };
+// India + location filters. The "India-based" pill keeps jobs located in / explicitly for India. The "Location & pay" menu filters by
+// city, work mode and pay currency: any ticked value inside a section counts, and the sections combine.
+const MODE_LABEL = { remote: "Remote", hybrid: "Hybrid", onsite: "On-site", unspecified: "Not stated" };
+const curBucket = j => (j.currency === "USD" || (!j.currency && j.usd)) ? "USD" : j.currency === "INR" ? "INR" : j.currency ? "Other" : "Not listed";
+const FACETS = [
+  { key: "cities", title: "City", values: j => (j.city ? [j.city] : []), label: v => v },
+  { key: "modes", title: "Work mode", values: j => [j.mode || "unspecified"], label: v => MODE_LABEL[v] || v, order: ["remote", "hybrid", "onsite", "unspecified"] },
+  { key: "currencies", title: "Pay currency", values: j => [curBucket(j)], order: ["USD", "INR", "Other", "Not listed"],
+    label: v => ({ USD: "USD ($)", INR: "INR (₹)", Other: "Other currency", "Not listed": "Pay not listed" })[v] || v },
+];
+const indiaOk = j => !filters.india || !!j.india;
+const whereOk = j => FACETS.every(f => !filters.where[f.key].size || f.values(j).some(v => filters.where[f.key].has(v)));
 let query = "";
 function load(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch (e) { return fallback; } }
 function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
@@ -346,6 +361,8 @@ function tags(j, withMatch = true) {
   else f.append(el("span", "tag signup", j.apply === "signup" ? "Sign-up wall" : "Apply unverified"));
   if (j.blocked) f.append(el("span", "tag block", "⚠ " + j.blocked));
   else if (j.anywhere) f.append(el("span", "tag", "Anywhere"));
+  if (j.india) f.append(el("span", "tag india", "📍 " + (j.city || "India")));
+  if (j.mode === "hybrid" || j.mode === "onsite") f.append(el("span", "tag", MODE_LABEL[j.mode]));
   return f;
 }
 function openJob(j) { const u = safeUrl(j.url); if (u) window.open(u, "_blank", "noopener,noreferrer"); }
@@ -413,11 +430,13 @@ function makeRow(title, sub, jobs, numbered) {
   return row;
 }
 
-// ignoreStack = every job the stack menu could offer (used for its counts). When technologies are picked, the default
-// "matches my Java/AI profile" gate is replaced by "is an engineering job": an explicit choice beats my scoring.
-function pool(ignoreStack) {
-  const picking = ignoreStack || filters.stack.size > 0;
-  return data.jobs.filter(j => (picking ? j.eng !== false : j.dev) && (ignoreStack || stackOk(j)) && siteOk(j) && (filters.restricted || !j.blocked) && (!filters.direct || j.apply === "direct")
+// opts: noStack = ignore the Tech stack filter (for its counts); noWhere = ignore the city / work-mode / pay-currency filters (for their
+// counts); noDirect = ignore "Direct apply only" (for the India rows, whose Apply links come via Himalayas and can't be verified).
+// When technologies are picked, the default "matches my Java/AI profile" gate becomes "is an engineering job": an explicit choice beats my scoring.
+function pool(opts = {}) {
+  const picking = opts.noStack || filters.stack.size > 0;
+  return data.jobs.filter(j => (picking ? j.eng !== false : j.dev) && (opts.noStack || stackOk(j)) && indiaOk(j) && (opts.noWhere || whereOk(j)) && siteOk(j)
+    && (filters.restricted || !j.blocked) && (opts.noDirect || !filters.direct || j.apply === "direct")
     && (!filters.anywhere || j.anywhere) && (!filters.usd || j.usd)
     && (!filters.contract || j.freelance) && (!filters.email || isEmail(j.email)));
 }
@@ -436,9 +455,14 @@ function refreshListRow() {
 function renderRows() {
   const host = $("#rows"); host.replaceChildren(); listRowHost = host;
   const p = pool().sort(byRank);
+  // India rows ignore "Direct apply only" (they come via Himalayas, whose Apply links can't be verified; each card says so). When the
+  // India-based pill is on, every row is already India-only, so these extra rows would just repeat them.
+  const pi = filters.india ? [] : pool({ noDirect: true }).filter(j => j.india).sort(byRank);
   const defs = [
     [filters.stack.size ? "Top 10 · " + [...filters.stack].join(filters.stackAll ? " + " : " / ") : "Top 10 matches for your stack", "ranked by keyword fit", p.slice(0, 10), true],
     ["Freelance & contract", null, p.filter(j => j.freelance)],
+    ["India-based freelance & contract", "Apply via Himalayas · unverified", pi.filter(j => j.freelance)],
+    ["India-based jobs", "open to people living in India", pi],
     ["Paid in USD · work from anywhere", null, p.filter(j => j.usd && j.anywhere)],
     ["AI agents, LLMs & RAG", null, p.filter(j => hasAny(j, AI_LABELS))],
     ["Java, Spring & microservices", null, p.filter(j => hasAny(j, JAVA_LABELS))],
@@ -506,7 +530,7 @@ function scheduleHero() {
 /* ------------------------------------------------------------------ search */
 function renderResults() {
   const box = $("#results"), terms = query.toLowerCase().split(/\s+/).filter(Boolean);
-  const rows = data.jobs.filter(j => siteOk(j) && stackOk(j) && (filters.restricted || !j.blocked) && (!filters.direct || j.apply === "direct") && (!filters.anywhere || j.anywhere) && (!filters.usd || j.usd) && (!filters.contract || j.freelance) && (!filters.email || isEmail(j.email))
+  const rows = data.jobs.filter(j => siteOk(j) && stackOk(j) && indiaOk(j) && whereOk(j) && (filters.restricted || !j.blocked) && (!filters.direct || j.apply === "direct") && (!filters.anywhere || j.anywhere) && (!filters.usd || j.usd) && (!filters.contract || j.freelance) && (!filters.email || isEmail(j.email))
     && terms.every(t => (j.title + " " + j.company + " " + j.snippet + " " + (j.matched || []).join(" ")).toLowerCase().includes(t))).sort(byRank).slice(0, 120);
   box.replaceChildren(el("h2", null, rows.length ? "Results for “" + query + "”" : "No results for “" + query + "”"));
   if (!rows.length) { box.append(emptyState("Nothing found", "Try a broader term like “java”, “ai agent” or “aws”.")); return; }
@@ -548,7 +572,7 @@ function openModal(j, from) {
   const meta = el("div", "meta"); meta.append(tags(j), el("span", null, ago(j)), el("span", null, "· " + cleanCompany(j)));
   const desc = el("div", "desc"); desc.append(linkify(j.desc || j.snippet || "No description provided."));
   const facts = el("div", "facts");
-  facts.append(fact("Source", j.source), fact("Posted", ago(j)), fact("Type", j.type || "Not stated"), fact("Location", j.location || "Not stated"),
+  facts.append(fact("Source", j.source), fact("Posted", ago(j)), fact("Type", j.type || "Not stated"), fact("Location", (j.city ? j.city + ", " : "") + (j.location || "Not stated")), fact("Work mode", MODE_LABEL[j.mode || "unspecified"]),
     fact("Pay", j.pay || "Not listed"), fact("Remote from anywhere", j.blocked ? "No — " + j.blocked : j.anywhere ? "Likely" : "Unclear / restricted"),
     fact("How to apply", j.apply === "direct" ? "Directly with the employer / contact, no account needed"
       : j.apply === "signup" ? "Needs a sign-in or sign-up on " + j.source + " before you can apply"
@@ -559,11 +583,13 @@ function openModal(j, from) {
   body.append(meta, desc, facts, el("div", "note", "Match % is a keyword score against your stack, not a guarantee. “Anywhere” and “USD” are detected from the posting’s wording, so confirm before applying."));
   sheet.append(x, hero, body); m.append(sheet);
   m.setAttribute("aria-hidden", "false"); document.body.style.overflow = "hidden";
-  requestAnimationFrame(() => { m.classList.add("show"); x.focus({ preventScroll: true }); });
+  m.dataset.open = "1";   // set now, not in the animation frame, so an Escape pressed right away still closes it
+  requestAnimationFrame(() => { if (m.dataset.open !== "1") return; m.classList.add("show"); x.focus({ preventScroll: true }); });
   m.scrollTop = 0;
 }
 function closeModal() {
-  const m = $("#modal"); if (!m.classList.contains("show")) return;
+  const m = $("#modal"); if (m.dataset.open !== "1") return;
+  delete m.dataset.open;
   m.classList.remove("show"); m.setAttribute("aria-hidden", "true"); document.body.style.overflow = "";
   if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
 }
@@ -662,7 +688,7 @@ function techGroups() {
 }
 function stackCounts() {
   const c = new Map();
-  for (const j of pool(true)) for (const t of j.tech || []) c.set(t, (c.get(t) || 0) + 1);
+  for (const j of pool({ noStack: true })) for (const t of j.tech || []) c.set(t, (c.get(t) || 0) + 1);
   return c;
 }
 function updateStackLabel() {
@@ -732,6 +758,76 @@ addEventListener("resize", () => { if (stackMenuOpen()) positionStackMenu(); });
 addEventListener("scroll", () => { if (stackMenuOpen()) positionStackMenu(); }, { passive: true });
 document.querySelectorAll(".pill[data-f]").forEach(p => p.addEventListener("click", () => { if (stackMenuOpen()) buildStackMenu(); }));
 
+/* ------------------------------------------------------------------ location & pay filter (city, work mode, pay currency) */
+const WHERE_KEY = "ff_where_v1";
+const whereMenu = el("div", "menu wide"); whereMenu.id = "whereMenu"; whereMenu.setAttribute("role", "group"); whereMenu.setAttribute("aria-label", "Location and pay"); document.body.append(whereMenu);
+const whereMenuOpen = () => whereMenu.classList.contains("show");
+const whereCount = () => FACETS.reduce((n, f) => n + filters.where[f.key].size, 0);
+function updateWhereLabel() {
+  const n = whereCount();
+  $("#whereBtn").textContent = (n ? "Location & pay · " + n : "Location & pay") + " ▾";
+  $("#whereBtn").setAttribute("aria-pressed", String(n > 0));
+}
+function restoreWhere() {
+  const s = load(WHERE_KEY, null) || {};
+  for (const f of FACETS) filters.where[f.key] = new Set(Array.isArray(s[f.key]) ? s[f.key].filter(v => typeof v === "string") : []);
+  updateWhereLabel();
+}
+function setWhere() {
+  save(WHERE_KEY, Object.fromEntries(FACETS.map(f => [f.key, [...filters.where[f.key]]])));
+  updateWhereLabel(); renderRows(); applyView(); buildWhereMenu();
+}
+function buildWhereMenu() {
+  if (!data) return;
+  const base = pool({ noWhere: true }), keep = whereMenu.scrollTop;
+  whereMenu.replaceChildren();
+  const head = el("div", "menu-head"); head.append(el("b", null, "Location & pay"));
+  const clear = el("button", "menu-link", "Clear"); clear.type = "button"; clear.disabled = !whereCount();
+  clear.addEventListener("click", () => { FACETS.forEach(f => filters.where[f.key].clear()); setWhere(); });
+  head.append(clear); whereMenu.append(head);
+  for (const f of FACETS) {
+    const counts = new Map();
+    for (const j of base) for (const v of f.values(j)) counts.set(v, (counts.get(v) || 0) + 1);
+    let values = [...new Set([...counts.keys(), ...filters.where[f.key]])];
+    values = f.order ? f.order.filter(v => values.includes(v)) : values.sort((a, b) => (counts.get(b) || 0) - (counts.get(a) || 0) || a.localeCompare(b));
+    if (!values.length) continue;
+    whereMenu.append(el("div", "menu-group", f.title));
+    for (const v of values) {
+      const n = counts.get(v) || 0, row = el("label", "menu-row" + (n === 0 ? " dim" : ""));
+      const cb = el("input"); cb.type = "checkbox"; cb.checked = filters.where[f.key].has(v);
+      cb.addEventListener("change", () => { cb.checked ? filters.where[f.key].add(v) : filters.where[f.key].delete(v); setWhere(); });
+      const name = el("span", "menu-name"); name.append(el("span", null, f.label(v)));
+      const count = el("span", "menu-count", String(n)); count.title = n + " jobs with your other filters";
+      row.append(cb, name, count); whereMenu.append(row);
+    }
+  }
+  whereMenu.append(el("div", "menu-note", "Ticked values inside a section are alternatives; sections combine. Cities come from the posting text, so most India jobs show no city. Counts follow your other filters."));
+  whereMenu.scrollTop = keep;
+}
+function positionWhereMenu() {
+  const r = $("#whereBtn").getBoundingClientRect(), w = Math.min(340, innerWidth - 16);
+  whereMenu.style.width = w + "px"; whereMenu.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + "px"; whereMenu.style.top = (r.bottom + 8) + "px";
+}
+function openWhere() { if (menuOpen()) closeSites(); if (stackMenuOpen()) closeStack(); buildWhereMenu(); positionWhereMenu(); whereMenu.classList.add("show"); $("#whereBtn").setAttribute("aria-expanded", "true"); }
+function closeWhere() { whereMenu.classList.remove("show"); $("#whereBtn").setAttribute("aria-expanded", "false"); }
+$("#whereBtn").addEventListener("click", e => { e.stopPropagation(); if (!data) return; whereMenuOpen() ? closeWhere() : openWhere(); });
+$("#sitesBtn").addEventListener("click", () => closeWhere());
+$("#stackBtn").addEventListener("click", () => closeWhere());
+document.addEventListener("mousedown", e => { if (whereMenuOpen() && !whereMenu.contains(e.target) && e.target !== $("#whereBtn")) closeWhere(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && whereMenuOpen()) { closeWhere(); $("#whereBtn").focus(); } });
+addEventListener("resize", () => { if (whereMenuOpen()) positionWhereMenu(); });
+addEventListener("scroll", () => { if (whereMenuOpen()) positionWhereMenu(); }, { passive: true });
+document.querySelectorAll(".pill[data-f]").forEach(p => p.addEventListener("click", () => { if (whereMenuOpen()) buildWhereMenu(); }));
+// India jobs come via Himalayas, whose Apply links can't be verified, so "Direct apply only" would hide every one of them. Turning the India
+// filter on switches it off (and says so); turn it back on any time.
+$('.pill[data-f="india"]').addEventListener("click", () => {
+  if (!data || !filters.india || !filters.direct) return;
+  filters.direct = false; $('.pill[data-f="direct"]').setAttribute("aria-pressed", "false");
+  renderRows(); applyView();
+  note("“Direct apply only” switched off: India jobs come via Himalayas, whose Apply links can’t be verified.", true);
+  setTimeout(() => note("", false), 6000);
+});
+
 const nav = $("#nav"); const onScroll = () => nav.classList.toggle("solid", window.scrollY > 24);
 addEventListener("scroll", onScroll, { passive: true }); onScroll();
 $("#refresh").addEventListener("click", () => fetchJobs(true));
@@ -761,7 +857,7 @@ async function fetchJobs(force) {
     if (!data) { $("#hero").style.display = "none"; $("#rows").replaceChildren(emptyState("Couldn’t load jobs", String(e) + (IS_LOCAL ? " — is the server still running? Try Refresh." : " — the job list may still be publishing. Try again in a minute."))); }
     return;
   }
-  restoreSites(); restoreStack(); renderRows(); applyView(); renderFooter();
+  restoreSites(); restoreStack(); restoreWhere(); renderRows(); applyView(); renderFooter();
   note(data.jobs.filter(j => j.dev).length + " jobs match your stack · " + data.jobs.length + " scanned", true);
   setTimeout(() => note("", false), 3200);
   rb.classList.remove("spin");
@@ -774,6 +870,8 @@ function renderFooter() {
   f.append(el("div", null, "Updated " + when + (IS_LOCAL ? "" : " · refreshed automatically every 15 minutes") + ". Press “/” to search."));
   const hidden = data.jobs.filter(j => j.dev && j.blocked).length;
   if (hidden) f.append(el("div", null, hidden + " matching jobs are hidden because they need US citizenship, a security clearance, US work authorization, or US/region-only residency. Turn on “Show restricted” to see them."));
+  const inIndia = data.jobs.filter(j => j.dev && !j.blocked && j.india).length;
+  if (inIndia) f.append(el("div", null, inIndia + " matching jobs are based in India (see the India-based rows or the India-based filter). Their Apply links go through Himalayas and could not be verified; a few listings come from staffing firms."));
   const gated = data.jobs.filter(j => j.dev && !j.blocked && j.apply !== "direct").length;
   if (gated) f.append(el("div", null, gated + " more matching jobs are hidden because Apply sends you through a sign-up wall (We Work Remotely, Jobicy) or could not be verified (Himalayas). Turn off “Direct apply only” to see them. RemoteOK is not used: its Apply button leads to a paid Premium page."));
   data.sources.forEach(s => f.append(el("div", s.error ? "err" : null, s.source + ": " + s.count + " jobs" + (s.cached && !s.error ? " (cached)" : "") + (s.error ? " — " + s.error : ""))));
