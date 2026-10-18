@@ -110,6 +110,51 @@ NOT_ENGINEERING_TITLE_RE = re.compile(
     r"trainer|tutor|instructor|teacher)\b", re.I)
 CORE_LABELS = {"Java", "Spring Boot", "Spring", "Microservices", "AI agents", "LLM", "RAG", "Prompt engineering", "AI/ML"}
 
+# --------------------------------------------------------------------------- tech tags (for the "Tech stack" filter)
+# Independent of the fit score above: every technology mentioned anywhere in a posting is recorded on the job, so the page
+# can filter on any combination. Groups drive the order of the dropdown. Add a line here to make a new technology filterable.
+TECH_GROUPS = [
+    ("Languages", {
+        "Java": r"\bjava\b", "Kotlin": r"\bkotlin\b", "Python": r"\bpython\b", "TypeScript": r"\btypescript\b",
+        "JavaScript": r"\bjava\s?script\b", "Node.js": r"\bnode\.?js\b|\bnestjs\b|\bexpress\.js\b",
+        "Go": r"\bgolang\b|\bgo\s?(lang|developer|engineer|backend)\b", "Rust": r"\brust\b", "C#/.NET": r"\bc#|(?<!\w)\.net\b|\bdotnet\b",
+        "C++": r"\bc\+\+", "PHP": r"\bphp\b|\blaravel\b|\bsymfony\b", "Ruby": r"\bruby\b|\brails\b", "Scala": r"\bscala\b",
+    }),
+    ("Frameworks", {
+        "Spring Boot": r"\bspring[\s-]?boot\b", "Spring": r"\bspring\b(?![\s-]?(sale|season|break|training))",
+        "Hibernate/JPA": r"\b(hibernate|jpa)\b", "FastAPI": r"\bfastapi\b", "Django": r"\bdjango\b", "Flask": r"\bflask\b",
+        "React": r"\breact(\.?js)?\b(?!\s*native)", "Angular": r"\bangular(js)?\b", "Vue": r"\bvue(\.?js)?\b", "Next.js": r"\bnext\.?js\b",
+    }),
+    ("Architecture", {
+        "Microservices": r"\bmicro[\s-]?services?\b", "REST APIs": r"\brest(ful)?[\s-]?(apis?|services?)\b|\bapi (development|integration|design)\b",
+        "GraphQL": r"\bgraphql\b", "Kafka": r"\bkafka\b", "Event-driven": r"\bevent[\s-]driven\b|\brabbitmq\b|\bsqs\b|\bpub/?sub\b", "gRPC": r"\bgrpc\b",
+    }),
+    ("Cloud & DevOps", {
+        "AWS": r"\b(aws|amazon web services|ec2|cloudformation)\b", "Azure": r"\bazure\b", "GCP": r"\b(gcp|google cloud)\b",
+        "Docker": r"\bdocker\b", "Kubernetes": r"\b(kubernetes|k8s|helm|eks|gke)\b", "Terraform": r"\b(terraform|pulumi|ansible)\b",
+        "CI/CD": r"\bci\s*/\s*cd\b|\bcicd\b|\bjenkins\b|\bgithub actions\b|\bgitlab ci\b", "Linux": r"\blinux\b",
+    }),
+    ("Data", {
+        "PostgreSQL": r"\bpostgres(ql)?\b", "MySQL": r"\b(mysql|mariadb)\b", "MongoDB": r"\bmongo(db)?\b", "Redis": r"\bredis\b",
+        "SQL": r"\bsql\b", "Elasticsearch": r"\b(elasticsearch|opensearch)\b",
+        "Vector DB": r"\bvector (db|database|search|store)s?\b|\b(pinecone|weaviate|qdrant|pgvector|chroma)\b",
+    }),
+    ("AI", {
+        "AI agents": r"\b(ai|llm|autonomous)[\s-]?agents?\b|\bagentic\b|\bmulti-agent\b|\bagent (framework|orchestration)\b",
+        "LLM": r"\b(llms?|large language models?|generative ai|gen ?ai)\b", "RAG": r"\brag\b|\bretrieval[\s-]augmented\b",
+        "Prompt engineering": r"\bprompt (engineering|design)\b", "LangChain": r"\b(langchain|langgraph|llamaindex|crewai|autogen)\b",
+        "MCP": r"\bmcp\b|\bmodel context protocol\b", "OpenAI API": r"\b(openai|gpt-?\d?)\b", "Claude/Anthropic": r"\b(claude|anthropic)\b",
+        "Machine learning": r"\b(machine learning|deep learning|pytorch|tensorflow|scikit-learn)\b", "NLP": r"\b(nlp|natural language processing)\b",
+    }),
+]
+TECH_RE = {label: re.compile(rx, re.I) for _, group in TECH_GROUPS for label, rx in group.items()}
+TECH_GROUPS_OUT = [[name, list(group)] for name, group in TECH_GROUPS]   # what the page needs: group order + labels
+
+
+def find_tech(title: str, text: str) -> list[str]:
+    blob = f"{title}\n{text[:8000]}"
+    return [label for label, rx in TECH_RE.items() if rx.search(blob)]
+
 
 def score_fit(title: str, text: str) -> tuple[int, list[str], int]:
     """Return (total score, matched labels best-first, core score)."""
@@ -201,6 +246,7 @@ def make_job(*, source, title, company, url, posted, text, job_type="", location
         "url": url, "posted": posted, "type": job_type or ("Contract / freelance" if freelance else ""),
         "location": location, "pay": pay, "usd": bool(usd), "anywhere": bool(anywhere),
         "freelance": bool(freelance), "dev": core >= MIN_CORE, "fit": fit, "matched": matched, "blocked": blocked,
+        "tech": find_tech(title, f"{job_type} {text}"), "eng": not NOT_ENGINEERING_TITLE_RE.search(title),
         "email": email or find_email(text),
         "snippet": re.sub(r"\s+", " ", text)[:260],
         "desc": re.sub(r"\n{3,}", "\n\n", text).strip()[:2400],
@@ -353,7 +399,7 @@ SOURCE_LABELS = {
 APPLY_MODE = {"HN Who's Hiring": "direct", "HN Freelancer": "direct", "Remotive": "direct",
               "We Work Remotely": "signup", "Jobicy": "signup", "Himalayas": "unknown"}
 # Bump when the job fields change, so old published rows are never mixed with new ones.
-SCHEMA = 3
+SCHEMA = 4
 # Sources that ask for gentle use are only re-fetched this often (seconds); between fetches the previous results are reused.
 SOURCE_TTL = {"Remotive": 6 * 3600}
 
@@ -412,7 +458,7 @@ def fetch_all(prev: dict | None = None) -> dict:
             best[k] = j
     jobs = [j for j in jobs if dupe_key(j) is None or best[dupe_key(j)] is j]
     jobs.sort(key=lambda j: j["posted"] or 0, reverse=True)
-    return {"schema": SCHEMA, "fetched_at": int(time.time()), "jobs": jobs, "sources": status}
+    return {"schema": SCHEMA, "fetched_at": int(time.time()), "jobs": jobs, "sources": status, "tech_groups": TECH_GROUPS_OUT}
 
 
 def get_payload(force: bool = False) -> dict:

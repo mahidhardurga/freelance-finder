@@ -85,6 +85,15 @@
   .menu-name .tag { font-size: 11px; padding: 0 6px; }
   .menu-count { font-variant-numeric: tabular-nums; font-weight: 700; min-width: 28px; text-align: right; }
   .menu-note { font-size: 12px; color: #8a8a8a; padding: 8px 8px 4px; border-top: 1px solid #2e2e2e; margin-top: 6px; }
+  .menu.wide { max-height: min(76vh, 600px); }
+  .menu-group { font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: #8a8a8a; padding: 12px 8px 4px; font-weight: 700; }
+  .menu-find { width: calc(100% - 16px); margin: 4px 8px 2px; padding: 7px 10px; border-radius: 6px; border: 1px solid #3a3a3a; background: #151515; color: #fff; font: inherit; font-size: 14px; outline: none; }
+  .menu-find:focus { border-color: #fff; }
+  .seg { display: flex; margin: 0 8px 6px; border: 1px solid #444; border-radius: 7px; overflow: hidden; }
+  .seg button { flex: 1; padding: 6px 8px; font-size: 13px; color: #ccc; transition: background .2s, color .2s; }
+  .seg button + button { border-left: 1px solid #444; }
+  .seg button[aria-pressed="true"] { background: #fff; color: #000; font-weight: 700; }
+  .facts .stackchips span.on { background: var(--accent); color: #fff; }
   .tag.new { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
   .hero-desc { color: #e0e0e0; font-size: clamp(14px, 1.35vw, 17px); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
                overflow: hidden; margin-bottom: 18px; text-shadow: 0 1px 10px rgba(0,0,0,.7); }
@@ -236,6 +245,7 @@
   <div class="logo">Freelance<span>Finder</span></div>
   <div class="pills" role="group" aria-label="Filters">
     <button class="pill" id="sitesBtn" aria-haspopup="true" aria-expanded="false" aria-controls="sitesMenu">Sites ▾</button>
+    <button class="pill" id="stackBtn" aria-haspopup="true" aria-expanded="false" aria-controls="stackMenu" title="Filter by technology: Java, Spring Boot, Kafka, AWS, LLM and more">Tech stack ▾</button>
     <button class="pill" data-f="anywhere" aria-pressed="false">Work from anywhere</button>
     <button class="pill" data-f="usd" aria-pressed="false">USD pay</button>
     <button class="pill" data-f="contract" aria-pressed="false">Contract only</button>
@@ -284,8 +294,14 @@ function setIcon(node, name) { node.replaceChildren(icon(name)); }
 /* ------------------------------------------------------------------ state + persistence */
 const SEEN_KEY = "ff_seen_v1", LIST_KEY = "ff_list_v2";
 let data = null, seen = new Set(), list = {}, firstRun = true;
-const filters = { anywhere: false, usd: false, contract: false, email: false, restricted: false, direct: true, sites: null };   // sites: null = every site, else a Set of site names
+const filters = { anywhere: false, usd: false, contract: false, email: false, restricted: false, direct: true, sites: null, stack: new Set(), stackAll: false };   // sites: null = every site, else a Set of site names
 const siteOk = j => !filters.sites || filters.sites.has(j.source);
+// Tech stack filter: "any" = job mentions at least one selected technology, "all" = it mentions every one of them.
+const stackOk = j => {
+  if (!filters.stack.size) return true;
+  const t = j.tech || [], sel = [...filters.stack];
+  return filters.stackAll ? sel.every(s => t.includes(s)) : sel.some(s => t.includes(s));
+};
 let query = "";
 function load(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch (e) { return fallback; } }
 function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
@@ -397,8 +413,11 @@ function makeRow(title, sub, jobs, numbered) {
   return row;
 }
 
-function pool() {
-  return data.jobs.filter(j => j.dev && siteOk(j) && (filters.restricted || !j.blocked) && (!filters.direct || j.apply === "direct")
+// ignoreStack = every job the stack menu could offer (used for its counts). When technologies are picked, the default
+// "matches my Java/AI profile" gate is replaced by "is an engineering job": an explicit choice beats my scoring.
+function pool(ignoreStack) {
+  const picking = ignoreStack || filters.stack.size > 0;
+  return data.jobs.filter(j => (picking ? j.eng !== false : j.dev) && (ignoreStack || stackOk(j)) && siteOk(j) && (filters.restricted || !j.blocked) && (!filters.direct || j.apply === "direct")
     && (!filters.anywhere || j.anywhere) && (!filters.usd || j.usd)
     && (!filters.contract || j.freelance) && (!filters.email || isEmail(j.email)));
 }
@@ -418,7 +437,7 @@ function renderRows() {
   const host = $("#rows"); host.replaceChildren(); listRowHost = host;
   const p = pool().sort(byRank);
   const defs = [
-    ["Top 10 matches for your stack", "ranked by keyword fit", p.slice(0, 10), true],
+    [filters.stack.size ? "Top 10 · " + [...filters.stack].join(filters.stackAll ? " + " : " / ") : "Top 10 matches for your stack", "ranked by keyword fit", p.slice(0, 10), true],
     ["Freelance & contract", null, p.filter(j => j.freelance)],
     ["Paid in USD · work from anywhere", null, p.filter(j => j.usd && j.anywhere)],
     ["AI agents, LLMs & RAG", null, p.filter(j => hasAny(j, AI_LABELS))],
@@ -487,7 +506,7 @@ function scheduleHero() {
 /* ------------------------------------------------------------------ search */
 function renderResults() {
   const box = $("#results"), terms = query.toLowerCase().split(/\s+/).filter(Boolean);
-  const rows = data.jobs.filter(j => siteOk(j) && (filters.restricted || !j.blocked) && (!filters.direct || j.apply === "direct") && (!filters.anywhere || j.anywhere) && (!filters.usd || j.usd) && (!filters.contract || j.freelance) && (!filters.email || isEmail(j.email))
+  const rows = data.jobs.filter(j => siteOk(j) && stackOk(j) && (filters.restricted || !j.blocked) && (!filters.direct || j.apply === "direct") && (!filters.anywhere || j.anywhere) && (!filters.usd || j.usd) && (!filters.contract || j.freelance) && (!filters.email || isEmail(j.email))
     && terms.every(t => (j.title + " " + j.company + " " + j.snippet + " " + (j.matched || []).join(" ")).toLowerCase().includes(t))).sort(byRank).slice(0, 120);
   box.replaceChildren(el("h2", null, rows.length ? "Results for “" + query + "”" : "No results for “" + query + "”"));
   if (!rows.length) { box.append(emptyState("Nothing found", "Try a broader term like “java”, “ai agent” or “aws”.")); return; }
@@ -536,6 +555,7 @@ function openModal(j, from) {
       : "Not verified (" + j.source + " blocks automated checks)"));
   if (isEmail(j.email)) facts.append(fact("Contact", j.email));
   if (j.matched && j.matched.length) { const d = el("div"); d.append(el("b", null, "Matches your stack")); const c = el("div", "stackchips"); j.matched.forEach(t => c.append(el("span", null, t))); d.append(c); facts.append(d); }
+  if (j.tech && j.tech.length) { const d = el("div"); d.append(el("b", null, "Technologies mentioned")); const c = el("div", "stackchips"); j.tech.forEach(t => c.append(el("span", filters.stack.has(t) ? "on" : null, t))); d.append(c); facts.append(d); }
   body.append(meta, desc, facts, el("div", "note", "Match % is a keyword score against your stack, not a guarantee. “Anywhere” and “USD” are detected from the posting’s wording, so confirm before applying."));
   sheet.append(x, hero, body); m.append(sheet);
   m.setAttribute("aria-hidden", "false"); document.body.style.overflow = "hidden";
@@ -631,6 +651,87 @@ document.addEventListener("mousedown", e => { if (menuOpen() && !menu.contains(e
 document.addEventListener("keydown", e => { if (e.key === "Escape" && menuOpen()) { closeSites(); $("#sitesBtn").focus(); } });
 addEventListener("resize", () => { if (menuOpen()) positionMenu(); });
 addEventListener("scroll", () => { if (menuOpen()) positionMenu(); }, { passive: true });
+/* ------------------------------------------------------------------ tech stack filter (which technologies a job must mention) */
+const STACK_KEY = "ff_stack_v1";
+const stackMenu = el("div", "menu wide"); stackMenu.id = "stackMenu"; stackMenu.setAttribute("role", "group"); stackMenu.setAttribute("aria-label", "Choose technologies"); document.body.append(stackMenu);
+const stackMenuOpen = () => stackMenu.classList.contains("show");
+let stackFind = "";
+function techGroups() {
+  // group order comes from the data; older published data without it falls back to one flat list
+  return data.tech_groups || [["Technologies", [...new Set(data.jobs.flatMap(j => j.tech || []))].sort()]];
+}
+function stackCounts() {
+  const c = new Map();
+  for (const j of pool(true)) for (const t of j.tech || []) c.set(t, (c.get(t) || 0) + 1);
+  return c;
+}
+function updateStackLabel() {
+  const n = filters.stack.size, names = [...filters.stack];
+  $("#stackBtn").textContent = (n ? "Stack · " + (n <= 2 ? names.join(filters.stackAll ? " + " : " / ") : n + " selected") : "Tech stack") + " ▾";
+  $("#stackBtn").setAttribute("aria-pressed", String(n > 0));
+}
+function restoreStack() {
+  const known = new Set(techGroups().flatMap(g => g[1]));
+  const s = load(STACK_KEY, null);
+  filters.stack = new Set(s && Array.isArray(s.tech) ? s.tech.filter(t => known.has(t)) : []);
+  filters.stackAll = !!(s && s.all);
+  updateStackLabel();
+}
+function setStack(sel, all) {
+  filters.stack = sel; if (all != null) filters.stackAll = all;
+  save(STACK_KEY, { tech: [...filters.stack], all: filters.stackAll });
+  updateStackLabel(); renderRows(); applyView(); buildStackMenu();
+}
+function buildStackMenu() {
+  if (!data) return;
+  const counts = stackCounts(), q = stackFind.trim().toLowerCase(), keepScroll = stackMenu.scrollTop;
+  stackMenu.replaceChildren();
+  const head = el("div", "menu-head"); head.append(el("b", null, "Tech stack"));
+  const clear = el("button", "menu-link", "Clear"); clear.type = "button"; clear.disabled = !filters.stack.size;
+  clear.addEventListener("click", () => setStack(new Set()));
+  head.append(clear); stackMenu.append(head);
+  const seg = el("div", "seg"); seg.setAttribute("role", "group"); seg.setAttribute("aria-label", "Match mode");
+  [["Any selected", false], ["All selected", true]].forEach(([label, v]) => {
+    const b = el("button", null, label); b.type = "button"; b.setAttribute("aria-pressed", String(filters.stackAll === v));
+    b.addEventListener("click", () => setStack(new Set(filters.stack), v)); seg.append(b);
+  });
+  stackMenu.append(seg);
+  const find = el("input", "menu-find"); find.type = "search"; find.placeholder = "Find a technology…"; find.value = stackFind; find.setAttribute("aria-label", "Find a technology");
+  find.addEventListener("input", () => { stackFind = find.value; buildStackMenu(); const f = stackMenu.querySelector(".menu-find"); f.focus(); f.setSelectionRange(f.value.length, f.value.length); });
+  stackMenu.append(find);
+  let shown = 0;
+  for (const [group, labels] of techGroups()) {
+    const items = labels.filter(l => (counts.get(l) || filters.stack.has(l)) && (!q || l.toLowerCase().includes(q)));
+    if (!items.length) continue;
+    stackMenu.append(el("div", "menu-group", group));
+    for (const l of items) {
+      shown++;
+      const n = counts.get(l) || 0, row = el("label", "menu-row" + (n === 0 ? " dim" : ""));
+      const cb = el("input"); cb.type = "checkbox"; cb.checked = filters.stack.has(l);
+      cb.addEventListener("change", () => { const cur = new Set(filters.stack); cb.checked ? cur.add(l) : cur.delete(l); setStack(cur); });
+      const name = el("span", "menu-name"); name.append(el("span", null, l));
+      const count = el("span", "menu-count", String(n)); count.title = n + " jobs mention " + l + " with your other filters";
+      row.append(cb, name, count); stackMenu.append(row);
+    }
+  }
+  if (!shown) stackMenu.append(el("div", "menu-note", q ? "No technology matches “" + stackFind + "”." : "No technologies found."));
+  stackMenu.append(el("div", "menu-note", (filters.stack.size ? "Showing every engineering job that mentions your selection, not only your default Java/AI matches. " : "Pick technologies to see every engineering job that mentions them. ") + "Counts follow your other filters."));
+  stackMenu.scrollTop = keepScroll;
+}
+function positionStackMenu() {
+  const r = $("#stackBtn").getBoundingClientRect(), w = Math.min(380, innerWidth - 16);
+  stackMenu.style.width = w + "px"; stackMenu.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + "px"; stackMenu.style.top = (r.bottom + 8) + "px";
+}
+function openStack() { if (menuOpen()) closeSites(); buildStackMenu(); positionStackMenu(); stackMenu.classList.add("show"); $("#stackBtn").setAttribute("aria-expanded", "true"); }
+function closeStack() { stackMenu.classList.remove("show"); $("#stackBtn").setAttribute("aria-expanded", "false"); }
+$("#stackBtn").addEventListener("click", e => { e.stopPropagation(); if (!data) return; stackMenuOpen() ? closeStack() : openStack(); });
+$("#sitesBtn").addEventListener("click", () => closeStack());
+document.addEventListener("mousedown", e => { if (stackMenuOpen() && !stackMenu.contains(e.target) && e.target !== $("#stackBtn")) closeStack(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && stackMenuOpen()) { closeStack(); $("#stackBtn").focus(); } });
+addEventListener("resize", () => { if (stackMenuOpen()) positionStackMenu(); });
+addEventListener("scroll", () => { if (stackMenuOpen()) positionStackMenu(); }, { passive: true });
+document.querySelectorAll(".pill[data-f]").forEach(p => p.addEventListener("click", () => { if (stackMenuOpen()) buildStackMenu(); }));
+
 const nav = $("#nav"); const onScroll = () => nav.classList.toggle("solid", window.scrollY > 24);
 addEventListener("scroll", onScroll, { passive: true }); onScroll();
 $("#refresh").addEventListener("click", () => fetchJobs(true));
@@ -660,7 +761,7 @@ async function fetchJobs(force) {
     if (!data) { $("#hero").style.display = "none"; $("#rows").replaceChildren(emptyState("Couldn’t load jobs", String(e) + (IS_LOCAL ? " — is the server still running? Try Refresh." : " — the job list may still be publishing. Try again in a minute."))); }
     return;
   }
-  restoreSites(); renderRows(); applyView(); renderFooter();
+  restoreSites(); restoreStack(); renderRows(); applyView(); renderFooter();
   note(data.jobs.filter(j => j.dev).length + " jobs match your stack · " + data.jobs.length + " scanned", true);
   setTimeout(() => note("", false), 3200);
   rb.classList.remove("spin");
