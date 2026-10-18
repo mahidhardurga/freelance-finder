@@ -217,18 +217,7 @@ def get_json(url: str):
 
 
 # --------------------------------------------------------------------------- sources
-def src_remoteok():
-    out = []
-    for j in get_json("https://remoteok.com/api")[1:]:
-        lo, hi = j.get("salary_min") or 0, j.get("salary_max") or 0
-        pay = f"${money(lo)}-${money(hi)}/{'hr' if hi < 1000 else 'yr'}" if lo and hi else ""
-        out.append(make_job(
-            source="RemoteOK", title=j.get("position", ""), company=j.get("company"), url=j.get("url") or j.get("apply_url"),
-            posted=to_epoch(j.get("epoch")), text=strip_html(j.get("description")) + " " + " ".join(j.get("tags") or []),
-            location=j.get("location") or "Worldwide", pay=pay, usd=True if pay else None))
-    return out
-
-
+# RemoteOK was removed on purpose: its Apply button leads to a paid "Premium" page, which is exactly what this app avoids.
 def src_remotive():
     out = []
     for j in get_json("https://remotive.com/api/remote-jobs?category=software-dev&limit=100").get("jobs", []):
@@ -340,7 +329,6 @@ def src_hn():
 SOURCES = {
     "HN (Who's hiring + Freelancer)": src_hn,
     "We Work Remotely": src_weworkremotely,
-    "RemoteOK": src_remoteok,
     "Remotive": src_remotive,
     "Jobicy": src_jobicy,
     "Himalayas": src_himalayas,
@@ -354,11 +342,18 @@ _cache = {"at": 0.0, "payload": None}
 SOURCE_LABELS = {
     "HN (Who's hiring + Freelancer)": ["HN Who's Hiring", "HN Freelancer"],
     "We Work Remotely": ["We Work Remotely"],
-    "RemoteOK": ["RemoteOK"],
     "Remotive": ["Remotive"],
     "Jobicy": ["Jobicy"],
     "Himalayas": ["Himalayas"],
 }
+# What happens when you press Apply (checked by following the real Apply buttons, 2026-10-18):
+#   direct  - goes straight to the employer / contact details, no account
+#   signup  - the board puts a sign-in / sign-up wall in front of Apply (We Work Remotely, Jobicy)
+#   unknown - could not be verified (Himalayas sits behind a bot check)
+APPLY_MODE = {"HN Who's Hiring": "direct", "HN Freelancer": "direct", "Remotive": "direct",
+              "We Work Remotely": "signup", "Jobicy": "signup", "Himalayas": "unknown"}
+# Bump when the job fields change, so old published rows are never mixed with new ones.
+SCHEMA = 3
 # Sources that ask for gentle use are only re-fetched this often (seconds); between fetches the previous results are reused.
 SOURCE_TTL = {"Remotive": 6 * 3600}
 
@@ -367,6 +362,8 @@ def fetch_all(prev: dict | None = None) -> dict:
     """Fetch every source in parallel. `prev` is the previous payload (used for per-source timing and as a
     fallback when a source fails, so one outage never empties the page)."""
     prev = prev or {}
+    if prev.get("schema") != SCHEMA:
+        prev = {}  # data from an older format: refetch everything rather than reuse rows that lack new fields
 
     def previous_rows(name):
         return [j for j in prev.get("jobs", []) if j.get("source") in SOURCE_LABELS[name]]
@@ -401,9 +398,21 @@ def fetch_all(prev: dict | None = None) -> dict:
             key = key or (j["company"] + j["title"]).lower()
             if j["url"] and key not in seen:
                 seen.add(key)
+                j["apply"] = APPLY_MODE.get(j["source"], "unknown")
                 jobs.append(j)
+    # The same job is often listed on several boards under different URLs: keep the copy that is easiest to apply to.
+    def dupe_key(j):
+        c, t = re.sub(r"\W+", "", j["company"].lower()), re.sub(r"\W+", "", j["title"].lower())
+        return (c, t) if c and t else None  # posts without a clear company/title are never merged
+
+    order, best = {"direct": 0, "unknown": 1, "signup": 2}, {}
+    for j in jobs:
+        k = dupe_key(j)
+        if k and (k not in best or order[j["apply"]] < order[best[k]["apply"]]):
+            best[k] = j
+    jobs = [j for j in jobs if dupe_key(j) is None or best[dupe_key(j)] is j]
     jobs.sort(key=lambda j: j["posted"] or 0, reverse=True)
-    return {"fetched_at": int(time.time()), "jobs": jobs, "sources": status}
+    return {"schema": SCHEMA, "fetched_at": int(time.time()), "jobs": jobs, "sources": status}
 
 
 def get_payload(force: bool = False) -> dict:

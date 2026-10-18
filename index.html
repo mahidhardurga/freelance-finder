@@ -69,6 +69,8 @@
   .tag { border: 1px solid rgba(255,255,255,.4); padding: 1px 7px; border-radius: 3px; font-size: 12px; color: #ddd; }
   .tag.usd { border-color: var(--green); color: var(--green); }
   .tag.block { border-color: #ff6b6b; color: #ff8a80; }
+  .tag.direct { border-color: var(--green); color: var(--green); }
+  .tag.signup { border-color: #e0a030; color: #e8b755; }
   .tag.new { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
   .hero-desc { color: #e0e0e0; font-size: clamp(14px, 1.35vw, 17px); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
                overflow: hidden; margin-bottom: 18px; text-shadow: 0 1px 10px rgba(0,0,0,.7); }
@@ -223,6 +225,7 @@
     <button class="pill" data-f="usd" aria-pressed="false">USD pay</button>
     <button class="pill" data-f="contract" aria-pressed="false">Contract only</button>
     <button class="pill" data-f="email" aria-pressed="false">Has email</button>
+    <button class="pill" data-f="direct" aria-pressed="true" title="Only jobs where Apply goes straight to the employer or a contact, with no sign-up wall">Direct apply only</button>
     <button class="pill" data-f="restricted" aria-pressed="false" title="Include jobs needing US citizenship, clearance or US/region residency">Show restricted</button>
   </div>
   <div class="tools">
@@ -237,7 +240,7 @@
 <section id="hero" aria-label="Featured job"></section>
 <main id="rows"></main>
 <section id="results" hidden></section>
-<div class="loadnote hide" id="loadnote"><i></i><span id="loadtext">Fetching from 6 public sources...</span></div>
+<div class="loadnote hide" id="loadnote"><i></i><span id="loadtext">Fetching from 5 public sources...</span></div>
 <footer id="foot"></footer>
 <div id="modal" role="dialog" aria-modal="true" aria-hidden="true"></div>
 
@@ -266,7 +269,7 @@ function setIcon(node, name) { node.replaceChildren(icon(name)); }
 /* ------------------------------------------------------------------ state + persistence */
 const SEEN_KEY = "ff_seen_v1", LIST_KEY = "ff_list_v2";
 let data = null, seen = new Set(), list = {}, firstRun = true;
-const filters = { anywhere: false, usd: false, contract: false, email: false, restricted: false };
+const filters = { anywhere: false, usd: false, contract: false, email: false, restricted: false, direct: true };
 let query = "";
 function load(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch (e) { return fallback; } }
 function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
@@ -307,6 +310,8 @@ function tags(j, withMatch = true) {
   if (j.freelance) f.append(el("span", "tag", "Contract"));
   if (j.usd) f.append(el("span", "tag usd", j.pay && /\$|usd/i.test(j.pay) ? j.pay : "USD"));
   else if (j.pay) f.append(el("span", "tag", j.pay));
+  if (j.apply === "direct") f.append(el("span", "tag direct", "Direct apply"));
+  else f.append(el("span", "tag signup", j.apply === "signup" ? "Sign-up wall" : "Apply unverified"));
   if (j.blocked) f.append(el("span", "tag block", "⚠ " + j.blocked));
   else if (j.anywhere) f.append(el("span", "tag", "Anywhere"));
   return f;
@@ -377,7 +382,7 @@ function makeRow(title, sub, jobs, numbered) {
 }
 
 function pool() {
-  return data.jobs.filter(j => j.dev && (filters.restricted || !j.blocked)
+  return data.jobs.filter(j => j.dev && (filters.restricted || !j.blocked) && (!filters.direct || j.apply === "direct")
     && (!filters.anywhere || j.anywhere) && (!filters.usd || j.usd)
     && (!filters.contract || j.freelance) && (!filters.email || isEmail(j.email)));
 }
@@ -466,7 +471,7 @@ function scheduleHero() {
 /* ------------------------------------------------------------------ search */
 function renderResults() {
   const box = $("#results"), terms = query.toLowerCase().split(/\s+/).filter(Boolean);
-  const rows = data.jobs.filter(j => (filters.restricted || !j.blocked) && (!filters.anywhere || j.anywhere) && (!filters.usd || j.usd) && (!filters.contract || j.freelance) && (!filters.email || isEmail(j.email))
+  const rows = data.jobs.filter(j => (filters.restricted || !j.blocked) && (!filters.direct || j.apply === "direct") && (!filters.anywhere || j.anywhere) && (!filters.usd || j.usd) && (!filters.contract || j.freelance) && (!filters.email || isEmail(j.email))
     && terms.every(t => (j.title + " " + j.company + " " + j.snippet + " " + (j.matched || []).join(" ")).toLowerCase().includes(t))).sort(byRank).slice(0, 120);
   box.replaceChildren(el("h2", null, rows.length ? "Results for “" + query + "”" : "No results for “" + query + "”"));
   if (!rows.length) { box.append(emptyState("Nothing found", "Try a broader term like “java”, “ai agent” or “aws”.")); return; }
@@ -509,7 +514,10 @@ function openModal(j, from) {
   const desc = el("div", "desc"); desc.append(linkify(j.desc || j.snippet || "No description provided."));
   const facts = el("div", "facts");
   facts.append(fact("Source", j.source), fact("Posted", ago(j)), fact("Type", j.type || "Not stated"), fact("Location", j.location || "Not stated"),
-    fact("Pay", j.pay || "Not listed"), fact("Remote from anywhere", j.blocked ? "No — " + j.blocked : j.anywhere ? "Likely" : "Unclear / restricted"));
+    fact("Pay", j.pay || "Not listed"), fact("Remote from anywhere", j.blocked ? "No — " + j.blocked : j.anywhere ? "Likely" : "Unclear / restricted"),
+    fact("How to apply", j.apply === "direct" ? "Directly with the employer / contact, no account needed"
+      : j.apply === "signup" ? "Needs a sign-in or sign-up on " + j.source + " before you can apply"
+      : "Not verified (" + j.source + " blocks automated checks)"));
   if (isEmail(j.email)) facts.append(fact("Contact", j.email));
   if (j.matched && j.matched.length) { const d = el("div"); d.append(el("b", null, "Matches your stack")); const c = el("div", "stackchips"); j.matched.forEach(t => c.append(el("span", null, t))); d.append(c); facts.append(d); }
   body.append(meta, desc, facts, el("div", "note", "Match % is a keyword score against your stack, not a guarantee. “Anywhere” and “USD” are detected from the posting’s wording, so confirm before applying."));
@@ -559,7 +567,7 @@ const jobsUrl = force => IS_LOCAL ? "/api/jobs" + (force ? "?refresh=1" : "") : 
 async function fetchJobs(force) {
   const rb = $("#refresh"); rb.classList.add("spin");
   if (!data) skeleton();
-  note(IS_LOCAL ? (force ? "Refreshing from 6 public sources…" : "Fetching from 6 public sources… first load takes a few seconds") : "Loading the latest jobs…", true);
+  note(IS_LOCAL ? (force ? "Refreshing from 5 public sources…" : "Fetching from 5 public sources… first load takes a few seconds") : "Loading the latest jobs…", true);
   try {
     const r = await fetch(jobsUrl(force), { cache: "no-store" }); if (!r.ok) throw new Error("HTTP " + r.status);
     data = await r.json();
@@ -581,9 +589,11 @@ function renderFooter() {
   f.append(el("div", null, "Updated " + when + (IS_LOCAL ? "" : " · refreshed automatically every 15 minutes") + ". Press “/” to search."));
   const hidden = data.jobs.filter(j => j.dev && j.blocked).length;
   if (hidden) f.append(el("div", null, hidden + " matching jobs are hidden because they need US citizenship, a security clearance, US work authorization, or US/region-only residency. Turn on “Show restricted” to see them."));
+  const gated = data.jobs.filter(j => j.dev && !j.blocked && j.apply !== "direct").length;
+  if (gated) f.append(el("div", null, gated + " more matching jobs are hidden because Apply sends you through a sign-up wall (We Work Remotely, Jobicy) or could not be verified (Himalayas). Turn off “Direct apply only” to see them. RemoteOK is not used: its Apply button leads to a paid Premium page."));
   data.sources.forEach(s => f.append(el("div", s.error ? "err" : null, s.source + ": " + s.count + " jobs" + (s.cached && !s.error ? " (cached)" : "") + (s.error ? " — " + s.error : ""))));
   const credit = el("div", null, "Job data from ");
-  [["RemoteOK", "https://remoteok.com"], ["Remotive", "https://remotive.com"], ["Jobicy", "https://jobicy.com"], ["Himalayas", "https://himalayas.app"],
+  [["Remotive", "https://remotive.com"], ["Jobicy", "https://jobicy.com"], ["Himalayas", "https://himalayas.app"],
    ["We Work Remotely", "https://weworkremotely.com"], ["Hacker News", "https://news.ycombinator.com"]].forEach(([n, u], i, all) => {
     const a = el("a", null, n); a.href = u; a.target = "_blank"; a.rel = "noopener"; credit.append(a, document.createTextNode(i < all.length - 1 ? ", " : ". "));
   });
