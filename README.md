@@ -18,13 +18,12 @@ Live: https://freelance.mahidhardurga.in
 A second Himalayas source (`Himalayas India`) uses its public search API with the country filter for India, running a short list of
 queries (Java, Spring Boot, AI, DevOps, contract, ...). It is fetched at most every 2 hours. Every job also gets `india` (based in or
 explicitly for India, from the title, location field and first line only), `city`, `mode` (remote / hybrid / on-site) and `currency`.
-On the page: the **India-based** pill, plus a **Location & pay** menu for city, work mode and pay currency. The India rows ignore
-"Direct apply only" because their Apply links go through Himalayas and cannot be verified; each card says so.
+On the page: the **India-based** pill, plus a **Location & pay** menu for city, work mode and pay currency. Himalayas jobs are tagged **free to apply**, so they show under the default filter, and each card says how Apply works.
 Honest limits: most listings are full-time and some come from staffing firms; Himalayas gives countries, not cities, so few jobs show a city.
 
 ## Apply links
 Each job is tagged by what Apply does: **direct** (straight to the employer or a contact: Hacker News, Remotive), **sign-up wall**
-(We Work Remotely, Jobicy) or **unverified** (Himalayas). The page shows direct-apply jobs by default. RemoteOK is deliberately not used,
+(We Work Remotely, Jobicy) or **free to apply** (Himalayas: applying goes through a free Himalayas account and the free plan has no payment step; checked signed in on 2026-10-19). The page shows direct and free-to-apply jobs by default. RemoteOK is deliberately not used,
 because its Apply button leads to a paid Premium page.
 
 ## Tuning

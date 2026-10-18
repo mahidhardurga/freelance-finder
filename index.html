@@ -79,6 +79,7 @@
   .tag.india { border-color: #ffb74d; color: #ffcc80; }
   .tag.direct { border-color: var(--green); color: var(--green); }
   .tag.signup { border-color: #e0a030; color: #e8b755; }
+  .tag.free { border-color: #5ac8fa; color: #7fd6fb; }
   /* site filter dropdown */
   .menu { position: fixed; z-index: 70; background: #1f1f1f; border: 1px solid #3a3a3a; border-radius: 10px; padding: 8px; box-shadow: 0 20px 50px rgba(0,0,0,.7);
           max-height: min(70vh, 460px); overflow: auto; opacity: 0; transform: translateY(-8px) scale(.98); transform-origin: top left; pointer-events: none;
@@ -278,7 +279,7 @@
   </div>
   <div class="fp-group">Applying &amp; eligibility</div>
   <div class="fp-row">
-    <button class="pill" data-f="direct" aria-pressed="true" title="Only jobs where Apply goes straight to the employer or a contact, with no sign-up wall">Direct apply only</button>
+    <button class="pill" data-f="direct" aria-pressed="true" title="Only jobs where applying is free: straight to the employer or a contact, or through a free account on the board (Himalayas). Hides sign-up walls and unverified boards">Free to apply only</button>
     <button class="pill" data-f="restricted" aria-pressed="false" title="Include jobs needing US citizenship, clearance or US/region residency">Show restricted</button>
   </div>
 </div>
@@ -376,6 +377,7 @@ function tags(j, withMatch = true) {
   if (j.usd) f.append(el("span", "tag usd", j.pay && /\$|usd/i.test(j.pay) ? j.pay : "USD"));
   else if (j.pay) f.append(el("span", "tag", j.pay));
   if (j.apply === "direct") f.append(el("span", "tag direct", "Direct apply"));
+  else if (j.apply === "free") f.append(el("span", "tag free", "Free to apply"));
   else f.append(el("span", "tag signup", j.apply === "signup" ? "Sign-up wall" : "Apply unverified"));
   if (j.blocked) f.append(el("span", "tag block", "⚠ " + j.blocked));
   else if (j.anywhere) f.append(el("span", "tag", "Anywhere"));
@@ -449,12 +451,12 @@ function makeRow(title, sub, jobs, numbered) {
 }
 
 // opts: noStack = ignore the Tech stack filter (for its counts); noWhere = ignore the city / work-mode / pay-currency filters (for their
-// counts); noDirect = ignore "Direct apply only" (for the India rows, whose Apply links come via Himalayas and can't be verified).
+// counts); noDirect = ignore "Free to apply only" (kept for the India rows).
 // When technologies are picked, the default "matches my Java/AI profile" gate becomes "is an engineering job": an explicit choice beats my scoring.
 function pool(opts = {}) {
   const picking = opts.noStack || filters.stack.size > 0;
   return data.jobs.filter(j => (picking ? j.eng !== false : j.dev) && (opts.noStack || stackOk(j)) && indiaOk(j) && (opts.noWhere || whereOk(j)) && siteOk(j)
-    && (filters.restricted || !j.blocked) && (opts.noDirect || !filters.direct || j.apply === "direct")
+    && (filters.restricted || !j.blocked) && (opts.noDirect || !filters.direct || j.apply === "direct" || j.apply === "free")
     && (!filters.anywhere || j.anywhere) && (!filters.usd || j.usd)
     && (!filters.contract || j.freelance) && (!filters.email || isEmail(j.email)));
 }
@@ -473,13 +475,13 @@ function refreshListRow() {
 function renderRows() {
   const host = $("#rows"); host.replaceChildren(); listRowHost = host;
   const p = pool().sort(byRank);
-  // India rows ignore "Direct apply only" (they come via Himalayas, whose Apply links can't be verified; each card says so). When the
+  // India rows ignore "Free to apply only" (each card says how Apply works). When the
   // India-based pill is on, every row is already India-only, so these extra rows would just repeat them.
   const pi = filters.india ? [] : pool({ noDirect: true }).filter(j => j.india).sort(byRank);
   const defs = [
     [filters.stack.size ? "Top 10 · " + [...filters.stack].join(filters.stackAll ? " + " : " / ") : "Top 10 matches for your stack", "ranked by keyword fit", p.slice(0, 10), true],
     ["Freelance & contract", null, p.filter(j => j.freelance)],
-    ["India-based freelance & contract", "Apply via Himalayas · unverified", pi.filter(j => j.freelance)],
+    ["India-based freelance & contract", "Free to apply via a Himalayas account", pi.filter(j => j.freelance)],
     ["India-based jobs", "open to people living in India", pi],
     ["Paid in USD · work from anywhere", null, p.filter(j => j.usd && j.anywhere)],
     ["AI agents, LLMs & RAG", null, p.filter(j => hasAny(j, AI_LABELS))],
@@ -549,7 +551,7 @@ function scheduleHero() {
 /* ------------------------------------------------------------------ search */
 function renderResults() {
   const box = $("#results"), terms = query.toLowerCase().split(/\s+/).filter(Boolean);
-  const rows = data.jobs.filter(j => siteOk(j) && stackOk(j) && indiaOk(j) && whereOk(j) && (filters.restricted || !j.blocked) && (!filters.direct || j.apply === "direct") && (!filters.anywhere || j.anywhere) && (!filters.usd || j.usd) && (!filters.contract || j.freelance) && (!filters.email || isEmail(j.email))
+  const rows = data.jobs.filter(j => siteOk(j) && stackOk(j) && indiaOk(j) && whereOk(j) && (filters.restricted || !j.blocked) && (!filters.direct || j.apply === "direct" || j.apply === "free") && (!filters.anywhere || j.anywhere) && (!filters.usd || j.usd) && (!filters.contract || j.freelance) && (!filters.email || isEmail(j.email))
     && terms.every(t => (j.title + " " + j.company + " " + j.snippet + " " + (j.matched || []).join(" ")).toLowerCase().includes(t))).sort(byRank).slice(0, 120);
   box.replaceChildren(el("h2", null, rows.length ? "Results for “" + query + "”" : "No results for “" + query + "”"));
   if (!rows.length) { box.append(emptyState("Nothing found", "Try a broader term like “java”, “ai agent” or “aws”.")); return; }
@@ -594,6 +596,7 @@ function openModal(j, from) {
   facts.append(fact("Source", j.source), fact("Posted", ago(j)), fact("Type", j.type || "Not stated"), fact("Location", (j.city ? j.city + ", " : "") + (j.location || "Not stated")), fact("Work mode", MODE_LABEL[j.mode || "unspecified"]),
     fact("Pay", j.pay || "Not listed"), fact("Remote from anywhere", j.blocked ? "No — " + j.blocked : j.anywhere ? "Likely" : "Unclear / restricted"),
     fact("How to apply", j.apply === "direct" ? "Directly with the employer / contact, no account needed"
+      : j.apply === "free" ? "Free: apply through a free " + j.source + " account (no payment needed)"
       : j.apply === "signup" ? "Needs a sign-in or sign-up on " + j.source + " before you can apply"
       : "Not verified (" + j.source + " blocks automated checks)"));
   if (isEmail(j.email)) facts.append(fact("Contact", j.email));
@@ -631,7 +634,7 @@ document.querySelectorAll(".pill[data-f]").forEach(p => p.addEventListener("clic
 
 /* ------------------------------------------------------------------ site filter (which job sites to include) */
 const SITES_KEY = "ff_sites_v1";
-const APPLY_LABEL = { direct: "direct apply", signup: "sign-up wall", unknown: "unverified" };
+const APPLY_LABEL = { direct: "direct apply", free: "free to apply", signup: "sign-up wall", unknown: "unverified" };
 function siteStats() {
   // per site: jobs that pass every OTHER filter (what you would get), and all usable stack matches (what the site has)
   const m = new Map();
@@ -639,7 +642,7 @@ function siteStats() {
   for (const j of data.jobs) if (j.dev && !j.blocked) m.get(j.source).total++;
   const saved = filters.sites; filters.sites = null;
   try { for (const j of pool()) m.get(j.source).shown++; } finally { filters.sites = saved; }
-  const rank = a => ({ direct: 0, unknown: 1, signup: 2 })[a] ?? 3;
+  const rank = a => ({ direct: 0, free: 1, unknown: 2, signup: 3 })[a] ?? 4;
   return [...m.values()].sort((a, b) => rank(a.apply) - rank(b.apply) || b.total - a.total || a.name.localeCompare(b.name));
 }
 function updateSitesLabel() {
@@ -678,12 +681,12 @@ function buildSitesMenu() {
       cb.checked ? cur.add(s.name) : cur.delete(s.name);
       setSites(cur);
     });
-    const name = el("span", "menu-name"); name.append(el("span", null, s.name), el("small", "tag " + (s.apply === "direct" ? "direct" : "signup"), APPLY_LABEL[s.apply] || s.apply));
+    const name = el("span", "menu-name"); name.append(el("span", null, s.name), el("small", "tag " + (s.apply === "direct" ? "direct" : s.apply === "free" ? "free" : "signup"), APPLY_LABEL[s.apply] || s.apply));
     const count = el("span", "menu-count", String(s.shown)); count.title = s.shown + " shown with your current filters · " + s.total + " usable matches on this site";
     row.append(cb, name, count); menu.append(row);
   }
-  const hiddenByDirect = filters.direct && stats.some(s => s.shown === 0 && s.total > 0 && s.apply !== "direct");
-  menu.append(el("div", "menu-note", hiddenByDirect ? "Sites showing 0 are hidden by “Direct apply only”. Turn that off to include them." : "Counts follow your other filters."));
+  const hiddenByDirect = filters.direct && stats.some(s => s.shown === 0 && s.total > 0 && s.apply !== "direct" && s.apply !== "free");
+  menu.append(el("div", "menu-note", hiddenByDirect ? "Sites showing 0 are hidden by “Free to apply only”. Turn that off to include them." : "Counts follow your other filters."));
 }
 function positionMenu() {
   const r = $("#sitesBtn").getBoundingClientRect(), w = Math.min(340, innerWidth - 16);
@@ -837,20 +840,10 @@ document.addEventListener("keydown", e => { if (e.key === "Escape" && whereMenuO
 addEventListener("resize", () => { if (whereMenuOpen()) positionWhereMenu(); });
 addEventListener("scroll", () => { if (whereMenuOpen()) positionWhereMenu(); }, { passive: true });
 document.querySelectorAll(".pill[data-f]").forEach(p => p.addEventListener("click", () => { if (whereMenuOpen()) buildWhereMenu(); }));
-// India jobs come via Himalayas, whose Apply links can't be verified, so "Direct apply only" would hide every one of them. Turning the India
-// filter on switches it off (and says so); turn it back on any time.
-$('.pill[data-f="india"]').addEventListener("click", () => {
-  if (!data || !filters.india || !filters.direct) return;
-  filters.direct = false; $('.pill[data-f="direct"]').setAttribute("aria-pressed", "false");
-  renderRows(); applyView();
-  note("“Direct apply only” switched off: India jobs come via Himalayas, whose Apply links can’t be verified.", true);
-  setTimeout(() => note("", false), 6000);
-});
-
 /* ------------------------------------------------------------------ filters panel (every filter in one place, no sideways scrolling) */
 const filterPanel = $("#filterPanel");
 const filtersOpen = () => filterPanel.classList.contains("show");
-// number of filters changed from their defaults ("Direct apply only" is on by default, so only turning it OFF counts)
+// number of filters changed from their defaults ("Free to apply only" is on by default, so only turning it OFF counts)
 function activeFilterCount() {
   let n = ["anywhere", "usd", "contract", "email", "india", "restricted"].filter(k => filters[k]).length;
   if (!filters.direct) n++;
@@ -923,9 +916,9 @@ function renderFooter() {
   const hidden = data.jobs.filter(j => j.dev && j.blocked).length;
   if (hidden) f.append(el("div", null, hidden + " matching jobs are hidden because they need US citizenship, a security clearance, US work authorization, or US/region-only residency. Turn on “Show restricted” to see them."));
   const inIndia = data.jobs.filter(j => j.dev && !j.blocked && j.india).length;
-  if (inIndia) f.append(el("div", null, inIndia + " matching jobs are based in India (see the India-based rows or the India-based filter). Their Apply links go through Himalayas and could not be verified; a few listings come from staffing firms."));
-  const gated = data.jobs.filter(j => j.dev && !j.blocked && j.apply !== "direct").length;
-  if (gated) f.append(el("div", null, gated + " more matching jobs are hidden because Apply sends you through a sign-up wall (We Work Remotely, Jobicy) or could not be verified (Himalayas). Turn off “Direct apply only” to see them. RemoteOK is not used: its Apply button leads to a paid Premium page."));
+  if (inIndia) f.append(el("div", null, inIndia + " matching jobs are based in India (see the India-based rows or the India-based filter). Applying is free through a Himalayas account; a few listings come from staffing firms."));
+  const gated = data.jobs.filter(j => j.dev && !j.blocked && j.apply !== "direct" && j.apply !== "free").length;
+  if (gated) f.append(el("div", null, gated + " more matching jobs are hidden because Apply sends you through a sign-up wall (We Work Remotely, Jobicy) or could not be verified. Turn off “Free to apply only” to see them. RemoteOK is not used: its Apply button leads to a paid Premium page."));
   data.sources.forEach(s => f.append(el("div", s.error ? "err" : null, s.source + ": " + s.count + " jobs" + (s.cached && !s.error ? " (cached)" : "") + (s.error ? " — " + s.error : ""))));
   const credit = el("div", null, "Job data from ");
   [["Remotive", "https://remotive.com"], ["Jobicy", "https://jobicy.com"], ["Himalayas", "https://himalayas.app"],

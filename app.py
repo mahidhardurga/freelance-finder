@@ -489,11 +489,13 @@ SOURCE_LABELS = {
 # What happens when you press Apply (checked by following the real Apply buttons, 2026-10-18):
 #   direct  - goes straight to the employer / contact details, no account
 #   signup  - the board puts a sign-in / sign-up wall in front of Apply (We Work Remotely, Jobicy)
-#   unknown - could not be verified (Himalayas sits behind a bot check)
+#   free    - Apply is free but goes through an account on the board itself (Himalayas: free plan includes applying,
+#             no payment step; checked signed in on 2026-10-19)
+#   unknown - could not be verified
 APPLY_MODE = {"HN Who's Hiring": "direct", "HN Freelancer": "direct", "Remotive": "direct",
-              "We Work Remotely": "signup", "Jobicy": "signup", "Himalayas": "unknown", "Himalayas India": "unknown"}
+              "We Work Remotely": "signup", "Jobicy": "signup", "Himalayas": "free", "Himalayas India": "free"}
 # Bump when the job fields change, so old published rows are never mixed with new ones.
-SCHEMA = 5
+SCHEMA = 6
 # Sources that ask for gentle use are only re-fetched this often (seconds); between fetches the previous results are reused.
 SOURCE_TTL = {"Remotive": 6 * 3600, "Himalayas India": 2 * 3600}
 
@@ -545,7 +547,7 @@ def fetch_all(prev: dict | None = None) -> dict:
         c, t = re.sub(r"\W+", "", j["company"].lower()), re.sub(r"\W+", "", j["title"].lower())
         return (c, t) if c and t else None  # posts without a clear company/title are never merged
 
-    order, best = {"direct": 0, "unknown": 1, "signup": 2}, {}
+    order, best = {"direct": 0, "free": 1, "unknown": 2, "signup": 3}, {}
     for j in jobs:
         k = dupe_key(j)
         if k and (k not in best or order[j["apply"]] < order[best[k]["apply"]]):
