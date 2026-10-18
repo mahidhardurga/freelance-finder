@@ -71,6 +71,20 @@
   .tag.block { border-color: #ff6b6b; color: #ff8a80; }
   .tag.direct { border-color: var(--green); color: var(--green); }
   .tag.signup { border-color: #e0a030; color: #e8b755; }
+  /* site filter dropdown */
+  .menu { position: fixed; z-index: 70; background: #1f1f1f; border: 1px solid #3a3a3a; border-radius: 10px; padding: 8px; box-shadow: 0 20px 50px rgba(0,0,0,.7);
+          max-height: min(70vh, 460px); overflow: auto; opacity: 0; transform: translateY(-8px) scale(.98); transform-origin: top left; pointer-events: none;
+          transition: opacity .2s, transform .3s var(--ease); }
+  .menu.show { opacity: 1; transform: none; pointer-events: auto; }
+  .menu-head { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px 8px; font-size: 14px; }
+  .menu-link { font-size: 13px; color: #8ab4ff; padding: 2px 6px; border-radius: 4px; } .menu-link:hover:not(:disabled) { text-decoration: underline; } .menu-link:disabled { color: #666; cursor: default; }
+  .menu-row { display: flex; align-items: center; gap: 10px; padding: 9px 8px; border-radius: 6px; cursor: pointer; transition: background .15s; }
+  .menu-row:hover { background: rgba(255,255,255,.07); } .menu-row.dim .menu-name > span, .menu-row.dim .menu-count { opacity: .5; }
+  .menu-row input { width: 17px; height: 17px; accent-color: var(--accent); margin: 0; flex: none; }
+  .menu-name { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14.5px; }
+  .menu-name .tag { font-size: 11px; padding: 0 6px; }
+  .menu-count { font-variant-numeric: tabular-nums; font-weight: 700; min-width: 28px; text-align: right; }
+  .menu-note { font-size: 12px; color: #8a8a8a; padding: 8px 8px 4px; border-top: 1px solid #2e2e2e; margin-top: 6px; }
   .tag.new { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
   .hero-desc { color: #e0e0e0; font-size: clamp(14px, 1.35vw, 17px); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
                overflow: hidden; margin-bottom: 18px; text-shadow: 0 1px 10px rgba(0,0,0,.7); }
@@ -221,6 +235,7 @@
 <header id="nav">
   <div class="logo">Freelance<span>Finder</span></div>
   <div class="pills" role="group" aria-label="Filters">
+    <button class="pill" id="sitesBtn" aria-haspopup="true" aria-expanded="false" aria-controls="sitesMenu">Sites ▾</button>
     <button class="pill" data-f="anywhere" aria-pressed="false">Work from anywhere</button>
     <button class="pill" data-f="usd" aria-pressed="false">USD pay</button>
     <button class="pill" data-f="contract" aria-pressed="false">Contract only</button>
@@ -269,7 +284,8 @@ function setIcon(node, name) { node.replaceChildren(icon(name)); }
 /* ------------------------------------------------------------------ state + persistence */
 const SEEN_KEY = "ff_seen_v1", LIST_KEY = "ff_list_v2";
 let data = null, seen = new Set(), list = {}, firstRun = true;
-const filters = { anywhere: false, usd: false, contract: false, email: false, restricted: false, direct: true };
+const filters = { anywhere: false, usd: false, contract: false, email: false, restricted: false, direct: true, sites: null };   // sites: null = every site, else a Set of site names
+const siteOk = j => !filters.sites || filters.sites.has(j.source);
 let query = "";
 function load(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch (e) { return fallback; } }
 function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
@@ -382,7 +398,7 @@ function makeRow(title, sub, jobs, numbered) {
 }
 
 function pool() {
-  return data.jobs.filter(j => j.dev && (filters.restricted || !j.blocked) && (!filters.direct || j.apply === "direct")
+  return data.jobs.filter(j => j.dev && siteOk(j) && (filters.restricted || !j.blocked) && (!filters.direct || j.apply === "direct")
     && (!filters.anywhere || j.anywhere) && (!filters.usd || j.usd)
     && (!filters.contract || j.freelance) && (!filters.email || isEmail(j.email)));
 }
@@ -471,7 +487,7 @@ function scheduleHero() {
 /* ------------------------------------------------------------------ search */
 function renderResults() {
   const box = $("#results"), terms = query.toLowerCase().split(/\s+/).filter(Boolean);
-  const rows = data.jobs.filter(j => (filters.restricted || !j.blocked) && (!filters.direct || j.apply === "direct") && (!filters.anywhere || j.anywhere) && (!filters.usd || j.usd) && (!filters.contract || j.freelance) && (!filters.email || isEmail(j.email))
+  const rows = data.jobs.filter(j => siteOk(j) && (filters.restricted || !j.blocked) && (!filters.direct || j.apply === "direct") && (!filters.anywhere || j.anywhere) && (!filters.usd || j.usd) && (!filters.contract || j.freelance) && (!filters.email || isEmail(j.email))
     && terms.every(t => (j.title + " " + j.company + " " + j.snippet + " " + (j.matched || []).join(" ")).toLowerCase().includes(t))).sort(byRank).slice(0, 120);
   box.replaceChildren(el("h2", null, rows.length ? "Results for “" + query + "”" : "No results for “" + query + "”"));
   if (!rows.length) { box.append(emptyState("Nothing found", "Try a broader term like “java”, “ai agent” or “aws”.")); return; }
@@ -543,10 +559,78 @@ $("#searchBtn").addEventListener("click", () => { $("#search").classList.add("op
 let qt = null;
 $("#q").addEventListener("input", e => { clearTimeout(qt); qt = setTimeout(() => { query = e.target.value; if (data) applyView(); window.scrollTo({ top: 0 }); }, 160); });
 $("#q").addEventListener("blur", () => { if (!$("#q").value) $("#search").classList.remove("open"); });
-document.querySelectorAll(".pill").forEach(p => p.addEventListener("click", () => {
+document.querySelectorAll(".pill[data-f]").forEach(p => p.addEventListener("click", () => {
   const k = p.dataset.f; filters[k] = !filters[k]; p.setAttribute("aria-pressed", String(filters[k]));
-  if (data) { renderRows(); applyView(); }
+  if (data) { renderRows(); applyView(); if (menuOpen()) buildSitesMenu(); }
 }));
+
+/* ------------------------------------------------------------------ site filter (which job sites to include) */
+const SITES_KEY = "ff_sites_v1";
+const APPLY_LABEL = { direct: "direct apply", signup: "sign-up wall", unknown: "unverified" };
+function siteStats() {
+  // per site: jobs that pass every OTHER filter (what you would get), and all usable stack matches (what the site has)
+  const m = new Map();
+  for (const j of data.jobs) if (!m.has(j.source)) m.set(j.source, { name: j.source, apply: j.apply, shown: 0, total: 0 });
+  for (const j of data.jobs) if (j.dev && !j.blocked) m.get(j.source).total++;
+  const saved = filters.sites; filters.sites = null;
+  try { for (const j of pool()) m.get(j.source).shown++; } finally { filters.sites = saved; }
+  const rank = a => ({ direct: 0, unknown: 1, signup: 2 })[a] ?? 3;
+  return [...m.values()].sort((a, b) => rank(a.apply) - rank(b.apply) || b.total - a.total || a.name.localeCompare(b.name));
+}
+function updateSitesLabel() {
+  const total = new Set(data ? data.jobs.map(j => j.source) : []).size, n = filters.sites ? filters.sites.size : total;
+  $("#sitesBtn").textContent = (filters.sites ? "Sites · " + n + " of " + total : "Sites") + " ▾";
+  $("#sitesBtn").setAttribute("aria-pressed", String(!!filters.sites));
+}
+function restoreSites() {
+  const all = new Set(data.jobs.map(j => j.source));
+  let saved = load(SITES_KEY, null);
+  saved = Array.isArray(saved) ? saved.filter(s => all.has(s)) : [];
+  filters.sites = saved.length && saved.length < all.size ? new Set(saved) : null;
+  updateSitesLabel();
+}
+function setSites(selected) {
+  const all = new Set(data.jobs.map(j => j.source));
+  filters.sites = selected.size === 0 || selected.size === all.size ? null : selected;   // never leave the page with zero sites
+  save(SITES_KEY, filters.sites ? [...filters.sites] : null);
+  updateSitesLabel(); renderRows(); applyView(); buildSitesMenu();
+}
+const menu = el("div", "menu"); menu.id = "sitesMenu"; menu.setAttribute("role", "group"); menu.setAttribute("aria-label", "Choose sites"); document.body.append(menu);
+const menuOpen = () => menu.classList.contains("show");
+function buildSitesMenu() {
+  if (!data) return;
+  const stats = siteStats();
+  menu.replaceChildren();
+  const head = el("div", "menu-head"); head.append(el("b", null, "Show jobs from"));
+  const all = el("button", "menu-link", "All sites"); all.type = "button"; all.disabled = !filters.sites;
+  all.addEventListener("click", () => setSites(new Set(stats.map(s => s.name))));
+  head.append(all); menu.append(head);
+  for (const s of stats) {
+    const row = el("label", "menu-row" + (s.shown === 0 ? " dim" : ""));
+    const cb = el("input"); cb.type = "checkbox"; cb.checked = !filters.sites || filters.sites.has(s.name);
+    cb.addEventListener("change", () => {
+      const cur = new Set(filters.sites || stats.map(x => x.name));
+      cb.checked ? cur.add(s.name) : cur.delete(s.name);
+      setSites(cur);
+    });
+    const name = el("span", "menu-name"); name.append(el("span", null, s.name), el("small", "tag " + (s.apply === "direct" ? "direct" : "signup"), APPLY_LABEL[s.apply] || s.apply));
+    const count = el("span", "menu-count", String(s.shown)); count.title = s.shown + " shown with your current filters · " + s.total + " usable matches on this site";
+    row.append(cb, name, count); menu.append(row);
+  }
+  const hiddenByDirect = filters.direct && stats.some(s => s.shown === 0 && s.total > 0 && s.apply !== "direct");
+  menu.append(el("div", "menu-note", hiddenByDirect ? "Sites showing 0 are hidden by “Direct apply only”. Turn that off to include them." : "Counts follow your other filters."));
+}
+function positionMenu() {
+  const r = $("#sitesBtn").getBoundingClientRect(), w = Math.min(340, innerWidth - 16);
+  menu.style.width = w + "px"; menu.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + "px"; menu.style.top = (r.bottom + 8) + "px";
+}
+function openSites() { buildSitesMenu(); positionMenu(); menu.classList.add("show"); $("#sitesBtn").setAttribute("aria-expanded", "true"); }
+function closeSites() { menu.classList.remove("show"); $("#sitesBtn").setAttribute("aria-expanded", "false"); }
+$("#sitesBtn").addEventListener("click", e => { e.stopPropagation(); if (!data) return; menuOpen() ? closeSites() : openSites(); });
+document.addEventListener("mousedown", e => { if (menuOpen() && !menu.contains(e.target) && e.target !== $("#sitesBtn")) closeSites(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && menuOpen()) { closeSites(); $("#sitesBtn").focus(); } });
+addEventListener("resize", () => { if (menuOpen()) positionMenu(); });
+addEventListener("scroll", () => { if (menuOpen()) positionMenu(); }, { passive: true });
 const nav = $("#nav"); const onScroll = () => nav.classList.toggle("solid", window.scrollY > 24);
 addEventListener("scroll", onScroll, { passive: true }); onScroll();
 $("#refresh").addEventListener("click", () => fetchJobs(true));
@@ -576,7 +660,7 @@ async function fetchJobs(force) {
     if (!data) { $("#hero").style.display = "none"; $("#rows").replaceChildren(emptyState("Couldn’t load jobs", String(e) + (IS_LOCAL ? " — is the server still running? Try Refresh." : " — the job list may still be publishing. Try again in a minute."))); }
     return;
   }
-  renderRows(); applyView(); renderFooter();
+  restoreSites(); renderRows(); applyView(); renderFooter();
   note(data.jobs.filter(j => j.dev).length + " jobs match your stack · " + data.jobs.length + " scanned", true);
   setTimeout(() => note("", false), 3200);
   rb.classList.remove("spin");
