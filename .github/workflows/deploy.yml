@@ -1,0 +1,62 @@
+name: Refresh jobs and deploy
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # every 15 minutes (GitHub may start runs a few minutes late)
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time; a newer run waits instead of cancelling one that is mid-deploy.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # The previous run's data is what the site is serving right now. It gives each source its own refresh timing
+      # (Remotive only every 6h) and a fallback if a source is down. First run: nothing to fetch, that's fine.
+      - name: Fetch previously published data
+        run: |
+          curl -fsSL --max-time 30 https://freelance.mahidhardurga.in/data/jobs.json -o prev.json \
+            || curl -fsSL --max-time 30 https://mahidhardurga.github.io/freelance-finder/data/jobs.json -o prev.json \
+            || rm -f prev.json
+
+      - name: Fetch jobs
+        run: python app.py --export site/data/jobs.json --prev prev.json
+
+      - name: Assemble site
+        run: |
+          cp index.html site/index.html
+          echo "freelance.mahidhardurga.in" > site/CNAME
+          touch site/.nojekyll
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
