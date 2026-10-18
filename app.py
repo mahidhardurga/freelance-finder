@@ -31,6 +31,41 @@ RESTRICTED_RE = re.compile(
     r"|\b(must|need to|have to)\s+(be\s+)?(located|based|live|reside|living|residing)\b"
     r"|work authori[sz]ation|authori[sz]ed to work|\bcitizens?\b|security clearance|\bw-?2\b"
     r"|\b(europe|eu|uk|canada|latam|emea)[- ]only\b|\bno (visa|sponsorship)\b|\bon-?site( only)?\b)", re.I)
+# Hard blockers: jobs you cannot take from India. These are checked against the FULL posting text and hide the job.
+BLOCK_ALWAYS = [
+    ("US citizenship required", re.compile(
+        r"\b(us|u\.s\.a?\.?|united states|american)\s+citizen(s|ship)?\b|\bcitizen(ship)?\s+(is\s+)?(required|mandatory)\b|\bgreen card\b", re.I)),
+    ("Security clearance", re.compile(
+        r"\b(security|government|secret|top[- ]secret|public trust|dod)\s+clearance\b|\bts\s*/\s*sci\b|\bclearance\s+(required|eligib\w+)\b|\bobtain\s+(a\s+)?clearance\b", re.I)),
+    ("US work authorization", re.compile(
+        r"work authori[sz]ation|(legally\s+)?authori[sz]ed to work in the (us|u\.s\.a?\.?|united states)|"
+        r"eligib\w+ to work in the (us|u\.s\.a?\.?|united states)|\bw-?2\s+(employee|only|position)\b|\bno (c2c|corp[- ]to[- ]corp)\b", re.I)),
+]
+BLOCK_LOCATION = [  # skipped when the posting mentions India, since "based in India" would be a good sign
+    ("US-only", re.compile(
+        r"\b(us|usa|u\.s\.a?\.?|united states)[- ]?(only|residents?|resident only)\b|\bonly\s+(open\s+to\s+)?(us|usa|united states)\b"
+        r"|\b(must|need to|have to)\s+(be\s+)?(located|based|live|reside|living|residing)\s+(in|within)\s+(the\s+)?(us|usa|u\.s\.a?\.?|united states)\b"
+        r"|\bremote\s*[\(\[,/-]\s*(us|usa|u\.s\.a?\.?|united states)\b|[\(\[]\s*(us|usa|u\.s\.a?\.?|united states)\s*[/,)\]-]"
+        r"|\b(us|usa)\s*/\s*remote\b|\bus[- ]based (candidates|applicants|engineers|contractors|developers|talent)\b", re.I)),
+    ("Region-locked", re.compile(
+        r"\b(europe|eu|uk|canada|latam|emea|australia|north america)[- ]?(only|residents?)\b"
+        r"|\b(must|need to|have to)\s+(be\s+)?(located|based|live|reside|living|residing)\s+(in|within)\s+(the\s+)?(uk|united kingdom|eu|europe|european union|canada|australia|germany|france|spain|netherlands|brazil|mexico|latam)\b", re.I)),
+]
+INDIA_RE = re.compile(r"\bindia\b|\bapac\b|\basia\b", re.I)
+
+
+def find_blocker(text: str, location: str = "") -> str | None:
+    blob = f"{location} {text}"
+    for reason, rx in BLOCK_ALWAYS:
+        if rx.search(blob):
+            return reason
+    if not INDIA_RE.search(blob):
+        for reason, rx in BLOCK_LOCATION:
+            if rx.search(blob):
+                return reason
+    return None
+
+
 EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 OBFUSCATED_EMAIL_RE = re.compile(r"([\w.+-]+)\s*[\[\(]\s*at\s*[\]\)]\s*([\w-]+(?:\s*[\[\(]?\s*dot\s*[\]\)]?\s*[\w-]+)+)", re.I)
 # --------------------------------------------------------------------------- your tech stack
@@ -153,6 +188,7 @@ def make_job(*, source, title, company, url, posted, text, job_type="", location
              email=None, anywhere=None, freelance=None):
     title, company, text = fix_mojibake(title or ""), fix_mojibake(company or ""), fix_mojibake(text or "")
     fit, matched, core = score_fit(title, f"{job_type} {text}")
+    blocked = find_blocker(f"{title} {text}", location)  # reason string, or None when nothing stops you applying
     if usd is None:
         usd = bool(USD_RE.search(pay or "")) or (not pay and bool(USD_RE.search(text)))
     if freelance is None:
@@ -164,7 +200,7 @@ def make_job(*, source, title, company, url, posted, text, job_type="", location
         "id": url, "source": source, "title": title.strip()[:160], "company": (company or "").strip()[:80],
         "url": url, "posted": posted, "type": job_type or ("Contract / freelance" if freelance else ""),
         "location": location, "pay": pay, "usd": bool(usd), "anywhere": bool(anywhere),
-        "freelance": bool(freelance), "dev": core >= MIN_CORE, "fit": fit, "matched": matched,
+        "freelance": bool(freelance), "dev": core >= MIN_CORE, "fit": fit, "matched": matched, "blocked": blocked,
         "email": email or find_email(text),
         "snippet": re.sub(r"\s+", " ", text)[:260],
         "desc": re.sub(r"\n{3,}", "\n\n", text).strip()[:2400],
