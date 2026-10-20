@@ -526,7 +526,9 @@ SOURCE_LABELS = {
 APPLY_MODE = {"HN Who's Hiring": "direct", "HN Freelancer": "direct", "Remotive": "direct",
               "We Work Remotely": "signup", "Jobicy": "signup", "Himalayas": "free", "Himalayas India": "free"}
 # Bump when the job fields change, so old published rows are never mixed with new ones.
-SCHEMA = 6
+SCHEMA = 7
+# The fields every job carries, taken from make_job itself so it can never drift from the code that builds jobs.
+JOB_KEYS = set(make_job(source="", title="", company="", url="", posted=None, text="").keys()) | {"apply"}
 # Sources that ask for gentle use are only re-fetched this often (seconds); between fetches the previous results are reused.
 SOURCE_TTL = {"Remotive": 6 * 3600, "Himalayas India": 2 * 3600}
 
@@ -539,7 +541,10 @@ def fetch_all(prev: dict | None = None) -> dict:
         prev = {}  # data from an older format: refetch everything rather than reuse rows that lack new fields
 
     def previous_rows(name):
-        return [j for j in prev.get("jobs", []) if j.get("source") in SOURCE_LABELS[name]]
+        rows = [j for j in prev.get("jobs", []) if j.get("source") in SOURCE_LABELS[name]]
+        # All-or-nothing: rows written by an older version of this file (missing any field a fresh job has) are never reused,
+        # so adding a field can't leave cached rows without it, whatever SCHEMA says.
+        return rows if all(JOB_KEYS <= j.keys() for j in rows) else []
 
     def previous_status(name):
         return next((s for s in prev.get("sources", []) if s.get("source") == name), None)
