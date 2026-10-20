@@ -284,6 +284,35 @@ def detect_currency(pay: str, text: str) -> str | None:
     return m.group(1) if m else None
 
 
+# --------------------------------------------------------------------------- commitment: part-time / contract / full-time
+PART_TIME_RE = re.compile(r"\bpart[- ]?time\b", re.I)
+HOURS_RE = re.compile(r"(?<![\d.])(\d{1,2})(?:\s*(?:-|–|to)\s*(\d{1,2}))?\s*\+?\s*(?:hrs?|hours)\s*(?:/|per|a|each)?\s*(?:week|wk)\b", re.I)
+FULL_TIME_RE = re.compile(r"\bfull[- ]?time\b|\bpermanent\b", re.I)
+CONTRACT_WORDS_RE = re.compile(
+    r"\b(contract(or)?|freelanc\w*|consult(ant|ing)?|1099|fixed[- ]term|temporary|per[- ]task|per[- ]project|ad[- ]hoc|retainer|gig)\b", re.I)
+
+
+def detect_commitment(title: str, job_type: str, text: str) -> tuple[str, int | None]:
+    """('part_time' | 'contract' | 'full_time' | 'unspecified', stated hours per week or None).
+    part_time = the posting says so, or states 30 hours a week or fewer. contract = contract/freelance wording with NO hours
+    stated (it may still be full-time hours, which is why it is a separate bucket). full_time = says so, or states 35+ hours."""
+    head, body = f"{title} {job_type}", text[:2500]
+    m = HOURS_RE.search(f"{head} {body}")
+    hours = max(int(g) for g in m.groups() if g) if m else None
+    if hours is not None and not 1 <= hours <= 60:
+        hours = None   # not a plausible weekly figure, probably something else
+    if PART_TIME_RE.search(head) or PART_TIME_RE.search(body[:1500]) or (hours is not None and hours <= 30):
+        return "part_time", hours
+    if hours is not None and hours >= 35:
+        return "full_time", hours
+    if CONTRACT_WORDS_RE.search(head) or CONTRACT_WORDS_RE.search(body[:600]):
+        # a contract whose own type says full-time is a full-time contract
+        return ("full_time" if re.search(r"full[- ]?time", job_type, re.I) else "contract"), hours
+    if FULL_TIME_RE.search(head) or FULL_TIME_RE.search(body[:800]):
+        return "full_time", hours
+    return "unspecified", hours
+
+
 def fix_mojibake(s: str) -> str:
     for enc in ("latin-1", "cp1252"):
         try:
@@ -306,9 +335,11 @@ def make_job(*, source, title, company, url, posted, text, job_type="", location
         loc_ok = not location or ANYWHERE_RE.search(location) is not None
         anywhere = loc_ok and not RESTRICTED_RE.search(f"{location} {text[:1500]}")
     india, city = detect_india(title, location, text)
+    commit, hours = detect_commitment(title, job_type, text)
     return {
         "id": url, "source": source, "title": title.strip()[:160], "company": (company or "").strip()[:80],
         "india": india, "city": city, "mode": detect_mode(location, text), "currency": detect_currency(pay, text),
+        "commit": commit, "hours": hours,
         "url": url, "posted": posted, "type": job_type or ("Contract / freelance" if freelance else ""),
         "location": location, "pay": pay, "usd": bool(usd), "anywhere": bool(anywhere),
         "freelance": bool(freelance), "dev": core >= MIN_CORE, "fit": fit, "matched": matched, "blocked": blocked,

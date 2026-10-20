@@ -77,6 +77,7 @@
   .tag.usd { border-color: var(--green); color: var(--green); }
   .tag.block { border-color: #ff6b6b; color: #ff8a80; }
   .tag.india { border-color: #ffb74d; color: #ffcc80; }
+  .tag.part { border-color: var(--green); color: var(--green); font-weight: 600; }
   .tag.direct { border-color: var(--green); color: var(--green); }
   .tag.signup { border-color: #e0a030; color: #e8b755; }
   .tag.free { border-color: #5ac8fa; color: #7fd6fb; }
@@ -263,6 +264,13 @@
 </header>
 
 <div class="filter-panel" id="filterPanel" role="group" aria-label="Filters">
+  <div class="fp-group" title="Tick the kinds of work you want. The numbers are how many jobs each has with your other filters.">Hours</div>
+  <div class="fp-row" id="commitRow" role="group" aria-label="Hours">
+    <button class="pill" data-c="part_time" data-label="Part-time" aria-pressed="true" title="The posting says part-time, or states 30 hours a week or fewer">Part-time</button>
+    <button class="pill" data-c="contract" data-label="Contract / freelance" aria-pressed="true" title="Contract or freelance wording, but the hours are not stated (could still be full-time hours)">Contract / freelance</button>
+    <button class="pill" data-c="unspecified" data-label="Not stated" aria-pressed="false" title="Nothing in the posting says whether it is part-time or full-time">Not stated</button>
+    <button class="pill" data-c="full_time" data-label="Full-time" aria-pressed="false" title="Says full-time or permanent, or states 35+ hours a week">Full-time</button>
+  </div>
   <div class="fp-group">Browse by</div>
   <div class="fp-row">
     <button class="pill" id="sitesBtn" aria-haspopup="true" aria-expanded="false" aria-controls="sitesMenu">Sites ▾</button>
@@ -316,7 +324,10 @@ function setIcon(node, name) { node.replaceChildren(icon(name)); }
 /* ------------------------------------------------------------------ state + persistence */
 const SEEN_KEY = "ff_seen_v1", LIST_KEY = "ff_list_v2";
 let data = null, seen = new Set(), list = {}, firstRun = true;
-const filters = { anywhere: false, usd: false, contract: false, email: false, restricted: false, direct: true, sites: null, stack: new Set(), stackAll: false, india: false, where: { cities: new Set(), modes: new Set(), currencies: new Set() } };   // sites: null = every site, else a Set of site names
+const filters = { anywhere: false, usd: false, contract: false, email: false, restricted: false, direct: true, sites: null, stack: new Set(), stackAll: false, india: false, where: { cities: new Set(), modes: new Set(), currencies: new Set() },
+  commit: new Set(["part_time", "contract"]) };   // Hours: which kinds of work to show (full-time is hidden by default). sites: null = every site, else a Set of site names
+const DEFAULT_COMMIT = ["part_time", "contract"], COMMIT_KEY = "ff_commit_v1";
+const commitOk = j => !filters.commit.size || filters.commit.has(j.commit || "unspecified");
 const siteOk = j => !filters.sites || filters.sites.has(j.source);
 // Tech stack filter: "any" = job mentions at least one selected technology, "all" = it mentions every one of them.
 const stackOk = j => {
@@ -365,7 +376,7 @@ function mono(j) { const w = cleanCompany(j).replace(/[^A-Za-z0-9 ]/g, " ").spli
 function pct(j) { return j.fit > 0 ? Math.min(99, Math.round(60 + Math.sqrt(j.fit) * 5.7)) : null; }
 function ageDays(j) { return j.posted ? (Date.now() / 1000 - j.posted) / 86400 : 999; }
 function ago(j) { const d = ageDays(j); if (d > 900) return "Date unknown"; if (d < 1) return "Today"; if (d < 2) return "Yesterday"; if (d < 60) return Math.floor(d) + " days ago"; return Math.floor(d / 30) + " months ago"; }
-function rank(j) { return j.fit + (j.freelance ? 15 : 0) + (j.usd ? 8 : 0) + (j.anywhere ? 10 : 0) + (j.email ? 5 : 0) + (ageDays(j) < 3 ? 6 : ageDays(j) < 10 ? 3 : 0); }
+function rank(j) { return j.fit + (j.commit === "part_time" ? 20 : 0) + (j.freelance ? 15 : 0) + (j.usd ? 8 : 0) + (j.anywhere ? 10 : 0) + (j.email ? 5 : 0) + (ageDays(j) < 3 ? 6 : ageDays(j) < 10 ? 3 : 0); }
 const hasAny = (j, labels) => (j.matched || []).some(m => labels.includes(m));
 
 function tags(j, withMatch = true) {
@@ -373,6 +384,8 @@ function tags(j, withMatch = true) {
   const p = pct(j);
   if (withMatch && p) f.append(el("span", "match", p + "% Match"));
   if (!seen.has(j.id) && !firstRun) f.append(el("span", "tag new", "NEW"));
+  if (j.commit === "part_time") f.append(el("span", "tag part", "Part-time" + (j.hours ? " · ~" + j.hours + " hrs/wk" : "")));
+  else if (j.commit === "full_time") f.append(el("span", "tag", "Full-time"));
   if (j.freelance) f.append(el("span", "tag", "Contract"));
   if (j.usd) f.append(el("span", "tag usd", j.pay && /\$|usd/i.test(j.pay) ? j.pay : "USD"));
   else if (j.pay) f.append(el("span", "tag", j.pay));
@@ -455,7 +468,7 @@ function makeRow(title, sub, jobs, numbered) {
 // When technologies are picked, the default "matches my Java/AI profile" gate becomes "is an engineering job": an explicit choice beats my scoring.
 function pool(opts = {}) {
   const picking = opts.noStack || filters.stack.size > 0;
-  return data.jobs.filter(j => (picking ? j.eng !== false : j.dev) && (opts.noStack || stackOk(j)) && indiaOk(j) && (opts.noWhere || whereOk(j)) && siteOk(j)
+  return data.jobs.filter(j => (picking ? j.eng !== false : j.dev) && (opts.noStack || stackOk(j)) && indiaOk(j) && (opts.noWhere || whereOk(j)) && (opts.noCommit || commitOk(j)) && siteOk(j)
     && (filters.restricted || !j.blocked) && (opts.noDirect || !filters.direct || j.apply === "direct" || j.apply === "free")
     && (!filters.anywhere || j.anywhere) && (!filters.usd || j.usd)
     && (!filters.contract || j.freelance) && (!filters.email || isEmail(j.email)));
@@ -480,6 +493,7 @@ function renderRows() {
   const pi = filters.india ? [] : pool({ noDirect: true }).filter(j => j.india).sort(byRank);
   const defs = [
     [filters.stack.size ? "Top 10 · " + [...filters.stack].join(filters.stackAll ? " + " : " / ") : "Top 10 matches for your stack", "ranked by keyword fit", p.slice(0, 10), true],
+    ["Part-time", "stated part-time, or 30 hrs/week or fewer", p.filter(j => j.commit === "part_time")],
     ["Freelance & contract", null, p.filter(j => j.freelance)],
     ["India-based freelance & contract", "Free to apply via a Himalayas account", pi.filter(j => j.freelance)],
     ["India-based jobs", "open to people living in India", pi],
@@ -494,7 +508,7 @@ function renderRows() {
   for (const [t, s, jobs, numbered] of defs) { if (jobs.length) { any = true; host.append(makeRow(t, s, jobs.slice(0, 24), numbered)); } }
   if (!any) host.append(emptyState("Nothing matches these filters", "Turn off a filter above, or hit refresh. Freelance work with a listed USD rate is rare on public boards."));
   refreshListRow();
-  updateFiltersLabel();
+  updateFiltersLabel(); updateCommitPills();
   renderHero(p);
 }
 
@@ -551,7 +565,7 @@ function scheduleHero() {
 /* ------------------------------------------------------------------ search */
 function renderResults() {
   const box = $("#results"), terms = query.toLowerCase().split(/\s+/).filter(Boolean);
-  const rows = data.jobs.filter(j => siteOk(j) && stackOk(j) && indiaOk(j) && whereOk(j) && (filters.restricted || !j.blocked) && (!filters.direct || j.apply === "direct" || j.apply === "free") && (!filters.anywhere || j.anywhere) && (!filters.usd || j.usd) && (!filters.contract || j.freelance) && (!filters.email || isEmail(j.email))
+  const rows = data.jobs.filter(j => siteOk(j) && stackOk(j) && indiaOk(j) && whereOk(j) && commitOk(j) && (filters.restricted || !j.blocked) && (!filters.direct || j.apply === "direct" || j.apply === "free") && (!filters.anywhere || j.anywhere) && (!filters.usd || j.usd) && (!filters.contract || j.freelance) && (!filters.email || isEmail(j.email))
     && terms.every(t => (j.title + " " + j.company + " " + j.snippet + " " + (j.matched || []).join(" ")).toLowerCase().includes(t))).sort(byRank).slice(0, 120);
   box.replaceChildren(el("h2", null, rows.length ? "Results for “" + query + "”" : "No results for “" + query + "”"));
   if (!rows.length) { box.append(emptyState("Nothing found", "Try a broader term like “java”, “ai agent” or “aws”.")); return; }
@@ -593,7 +607,7 @@ function openModal(j, from) {
   const meta = el("div", "meta"); meta.append(tags(j), el("span", null, ago(j)), el("span", null, "· " + cleanCompany(j)));
   const desc = el("div", "desc"); desc.append(linkify(j.desc || j.snippet || "No description provided."));
   const facts = el("div", "facts");
-  facts.append(fact("Source", j.source), fact("Posted", ago(j)), fact("Type", j.type || "Not stated"), fact("Location", (j.city ? j.city + ", " : "") + (j.location || "Not stated")), fact("Work mode", MODE_LABEL[j.mode || "unspecified"]),
+  facts.append(fact("Source", j.source), fact("Posted", ago(j)), fact("Type", j.type || "Not stated"), fact("Hours", (COMMIT_FACT[j.commit] || "Not stated") + (j.hours ? " · about " + j.hours + " hrs/week" : "")), fact("Location", (j.city ? j.city + ", " : "") + (j.location || "Not stated")), fact("Work mode", MODE_LABEL[j.mode || "unspecified"]),
     fact("Pay", j.pay || "Not listed"), fact("Remote from anywhere", j.blocked ? "No — " + j.blocked : j.anywhere ? "Likely" : "Unclear / restricted"),
     fact("How to apply", j.apply === "direct" ? "Directly with the employer / contact, no account needed"
       : j.apply === "free" ? "Free: apply through a free " + j.source + " account (no payment needed)"
@@ -847,6 +861,7 @@ const filtersOpen = () => filterPanel.classList.contains("show");
 function activeFilterCount() {
   let n = ["anywhere", "usd", "contract", "email", "india", "restricted"].filter(k => filters[k]).length;
   if (!filters.direct) n++;
+  if (commitChanged()) n++;
   if (filters.sites) n++;
   if (filters.stack.size) n++;
   return n + FACETS.filter(f => filters.where[f.key].size).length;
@@ -872,6 +887,36 @@ document.addEventListener("mousedown", e => {
 document.addEventListener("keydown", e => { if (e.key === "Escape" && filtersOpen()) { closeFilters(); $("#filtersBtn").focus(); } });
 addEventListener("resize", () => { if (filtersOpen()) positionFilters(); });
 addEventListener("scroll", () => { if (filtersOpen()) positionFilters(); }, { passive: true });
+
+/* ------------------------------------------------------------------ hours filter (part-time / contract / not stated / full-time) */
+const COMMIT_ORDER = ["part_time", "contract", "unspecified", "full_time"];
+const COMMIT_FACT = { part_time: "Part-time", contract: "Contract / freelance (hours not stated)", unspecified: "Not stated", full_time: "Full-time" };
+function updateCommitPills() {
+  const counts = {};
+  for (const j of pool({ noCommit: true })) { const k = j.commit || "unspecified"; counts[k] = (counts[k] || 0) + 1; }
+  document.querySelectorAll("#commitRow .pill").forEach(b => {
+    const k = b.dataset.c;
+    b.setAttribute("aria-pressed", String(filters.commit.has(k)));
+    b.textContent = b.dataset.label + " · " + (counts[k] || 0);
+  });
+}
+const commitChanged = () => filters.commit.size !== DEFAULT_COMMIT.length || DEFAULT_COMMIT.some(k => !filters.commit.has(k));
+function setCommit(sel) {
+  filters.commit = sel; save(COMMIT_KEY, [...sel]);
+  renderRows(); applyView();
+  if (menuOpen()) buildSitesMenu(); if (stackMenuOpen()) buildStackMenu(); if (whereMenuOpen()) buildWhereMenu();
+}
+function restoreCommit() {
+  const s = load(COMMIT_KEY, null);
+  if (Array.isArray(s)) filters.commit = new Set(s.filter(k => COMMIT_ORDER.includes(k)));
+  updateCommitPills();
+}
+document.querySelectorAll("#commitRow .pill").forEach(b => b.addEventListener("click", () => {
+  if (!data) return;
+  const cur = new Set(filters.commit);
+  cur.has(b.dataset.c) ? cur.delete(b.dataset.c) : cur.add(b.dataset.c);
+  setCommit(cur);
+}));
 
 const nav = $("#nav"); const onScroll = () => nav.classList.toggle("solid", window.scrollY > 24);
 addEventListener("scroll", onScroll, { passive: true }); onScroll();
@@ -902,7 +947,7 @@ async function fetchJobs(force) {
     if (!data) { $("#hero").style.display = "none"; $("#rows").replaceChildren(emptyState("Couldn’t load jobs", String(e) + (IS_LOCAL ? " — is the server still running? Try Refresh." : " — the job list may still be publishing. Try again in a minute."))); }
     return;
   }
-  restoreSites(); restoreStack(); restoreWhere(); renderRows(); applyView(); renderFooter();
+  restoreSites(); restoreStack(); restoreWhere(); restoreCommit(); renderRows(); applyView(); renderFooter();
   note(data.jobs.filter(j => j.dev).length + " jobs match your stack · " + data.jobs.length + " scanned", true);
   setTimeout(() => note("", false), 3200);
   rb.classList.remove("spin");
@@ -913,6 +958,8 @@ function renderFooter() {
   const age = Math.round((Date.now() / 1000 - data.fetched_at) / 60);
   const when = age < 1 ? "just now" : age < 90 ? age + " min ago" : Math.round(age / 60) + " h ago";
   f.append(el("div", null, "Updated " + when + (IS_LOCAL ? "" : " · refreshed automatically every 15 minutes") + ". Press “/” to search."));
+  const offHours = data.jobs.filter(j => j.dev && !j.blocked && !commitOk(j)).length;
+  if (offHours) f.append(el("div", null, offHours + " matching jobs are hidden by your Hours filter (mostly full-time). Open Filters → Hours to include them."));
   const hidden = data.jobs.filter(j => j.dev && j.blocked).length;
   if (hidden) f.append(el("div", null, hidden + " matching jobs are hidden because they need US citizenship, a security clearance, US work authorization, or US/region-only residency. Turn on “Show restricted” to see them."));
   const inIndia = data.jobs.filter(j => j.dev && !j.blocked && j.india).length;
