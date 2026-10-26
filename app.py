@@ -114,7 +114,8 @@ OFF_STACK_TITLE_RE = re.compile(
 NOT_ENGINEERING_TITLE_RE = re.compile(
     r"\b(annotat\w*|data entry|marketing|sales|copywriter|writer|designer|recruiter|accountant|customer|support|"
     r"co-?founder|ceo|cto|coo|legal|finance|manager|sourcing|director|vp|gtm|revenue|enablement|people operations|human resources|hr|"
-    r"product (lead|owner|analyst|marketing|operations)|trainer|tutor|instructor|teacher)\b", re.I)
+    r"product (lead|owner|analyst|marketing|operations|management)|account (executive|manager|director)|business development|representative|"
+    r"coordinator|assistant|interpreter|buyer|planner|investigator|trainer|tutor|instructor|teacher)\b", re.I)
 CORE_LABELS = {"Java", "Spring Boot", "Spring", "Microservices", "AI agents", "LLM", "RAG", "Prompt engineering", "AI/ML",
                "DevOps/SRE", "Cloud", "Kubernetes", "IaC", "CI/CD"}
 
@@ -184,34 +185,88 @@ DEVOPS_WEAK_RE = re.compile(r"\b(infrastructure|platform engineer(ing)?|kubernet
 CODE_WORD_RE = re.compile(
     r"\b(software|developer|full[\s-]?stack|front-?end|back-?end|member of technical staff|programmer|application|ai|ml|machine learning|llm|"
     r"data|research|security|solutions?|sales|field|support)\b", re.I)
-BACKEND_TITLE_RE = re.compile(
-    r"\b(back-?end|server[\s-]side|java|spring|golang|go (developer|engineer)|python|node(\.?js)?|rust|kotlin|api|microservices?|"
-    r"software (engineer|developer)|application developer)\b", re.I)
-FULLSTACK_TITLE_RE = re.compile(r"\bfull[\s-]?stack\b", re.I)
-FRONTEND_TITLE_RE = re.compile(r"\b(front-?end|ui engineer|react developer|angular developer)\b", re.I)
-AI_TITLE_RE = re.compile(r"\b(ai|a\.i\.|ml|machine learning|llm|nlp|deep learning|data scientist|generative|agentic|agents?|prompt|computer vision|mlops)\b", re.I)
-DATA_TITLE_RE = re.compile(r"\b(data (engineer(ing)?|platform|analyst|architect)|analytics engineer|etl|big data|bi developer)\b", re.I)
-DEVOPS_TECH = {"Kubernetes", "Terraform", "Ansible", "CI/CD", "GitOps", "Observability", "Docker", "AWS", "Azure", "GCP", "SRE", "Linux", "Serverless"}
+# One set of rules per role. Each looks only at the TITLE.
+SECURITY_RE = re.compile(r"\b(security|appsec|infosec|cyber\w*|pen(etration)?[\s-]?test(er|ing)?|threat|vulnerabilit\w+|detection (and|&) response|soc)\b", re.I)
+MOBILE_RE = re.compile(r"\b(ios|android|mobile|react native|flutter|swiftui|swift)\b", re.I)
+FRONTEND_RE = re.compile(r"\b(front-?end|ui (engineer|developer)|ux engineer|web developer|(react|angular|vue|javascript|typescript)(\.?js)? (developer|engineer))\b", re.I)
+FULLSTACK_RE = re.compile(r"\bfull[\s-]?stack\b|\bfullstack\b", re.I)
+DATA_RE = re.compile(
+    r"\b(data (engineer(ing)?|platform|infrastructure|analyst|analytics|architect|pipeline|warehouse|modeler)|analytics engineer|etl|big data|"
+    r"bi (developer|engineer)|database (engineer|developer|architect))\b", re.I)
+AI_RE = re.compile(
+    r"\b(ai|a\.i\.|ml|machine learning|deep learning|llms?|nlp|gen ?ai|generative|agentic|ai agents?|computer vision|data scientist|research scientist|"
+    r"applied scientist|prompt engineer(ing)?|ml ?ops|conversational ai|speech|multimodal|reinforcement learning)\b", re.I)
+QA_RE = re.compile(r"\b(qa|quality (assurance|engineer(ing)?)|sdet|test (engineer|automation|developer)|automation test|software tester)\b", re.I)
+SOLUTIONS_RE = re.compile(
+    r"\b(solutions? (engineer|architect|consultant|specialist)|forward[\s-]deployed|sales engineer|pre-?sales|customer engineer|support engineer|"
+    r"technical (support|services|account|consultant)|escalation|implementation (engineer|consultant)|professional services|developer (advocate|relations|success))\b", re.I)
+# Backend: an explicit backend signal, or a plain "Software Engineer / Developer" that no other role claimed.
+BACKEND_EXPLICIT_RE = re.compile(
+    r"\b(back-?end|server[\s-]side|java|spring|golang|go (developer|engineer)|python|node(\.?js)?|rust|kotlin|scala|elixir|api|microservices?|"
+    r"distributed systems?|systems? software|database (engineer|developer)|performance engineer)\b", re.I)
+BACKEND_GENERIC_RE = re.compile(r"\b(software (engineer|developer|development engineer)|application (developer|engineer)|sde|developer|programmer)\b", re.I)
 AI_TECH = {"AI agents", "LLM", "RAG", "Prompt engineering", "LangChain", "MCP", "Machine learning", "NLP"}
+BACKEND_TECH = {"Java", "Spring Boot", "Spring", "Microservices", "Kotlin", "Go", "Rust", "Hibernate/JPA", "REST APIs", "Kafka", "Python", "Node.js"}
+
+# Is it an engineering job at all? A POSITIVE test on the title (an engineer/developer/architect/scientist word), not "anything that
+# isn't obviously something else": otherwise a Chef or an Account Executive counts as engineering.
+ENG_POS_RE = re.compile(
+    r"\b(engineer(s|ing)?|developers?|devops|sre|architect|programmer|scientist|sdet|software|qa|quality assurance|dba|sysadmin|"
+    r"(system|systems|database|network|cloud|linux|windows) administrator|(tech|technical) lead|data (analyst|analytics)|analytics|"
+    r"machine learning|ml|ai|front-?end|back-?end|full[\s-]?stack|fullstack|desarrollador\w*|desenvolvedor\w*|entwickler\w*|ingenier\w*|ingénieur)\b", re.I)
+# Engineering, but not software: electrical, mechanical, hardware, manufacturing... and technician roles.
+NON_SOFTWARE_ENG_RE = re.compile(
+    r"\b((electrical|mechanical|civil|chemical|manufacturing|hardware|mechatronics|optical|rf|structural|process|field|design)\s+engineer(s|ing)?|"
+    r"technician|clinical|medical|dental|nurse|phlebotom\w*|compliance|regulatory|pharma\w*|gxp)\b", re.I)
+
+
+def is_engineering(title: str, core: int) -> bool:
+    if NOT_ENGINEERING_TITLE_RE.search(title) or NON_SOFTWARE_ENG_RE.search(title):
+        return False
+    return bool(ENG_POS_RE.search(title)) or core >= MIN_CORE   # core: unclear titles (e.g. Hacker News posts) can still be recognised by their stack
 
 
 def detect_roles(title: str, tech: list[str]) -> list[str]:
     """Which kinds of role this is, mostly from the title (what the job IS), with the technologies as a fallback.
     A job can be several (an 'AI platform engineer' is both). 'other' when nothing fits."""
-    roles = []
+    roles: list[str] = []
     t = set(tech)
-    if DEVOPS_STRONG_RE.search(title) or (DEVOPS_WEAK_RE.search(title) and not CODE_WORD_RE.search(title)):
-        roles.append("devops")
-    if BACKEND_TITLE_RE.search(title) or (t & {"Spring Boot", "Spring", "Microservices"} and re.search(r"\b(engineer|developer)\b", title, re.I) and "devops" not in roles):
-        roles.append("backend")
-    if FULLSTACK_TITLE_RE.search(title):
-        roles.append("fullstack")
-    if AI_TITLE_RE.search(title):
-        roles.append("ai")
-    if DATA_TITLE_RE.search(title):
-        roles.append("data")
-    if not roles and len(t & AI_TECH) >= 2:
-        roles.append("ai")        # nothing in the title says what it is: let the technologies decide, for AI only
+
+    def add(r):
+        if r not in roles:
+            roles.append(r)
+
+    devops = bool(DEVOPS_STRONG_RE.search(title) or (DEVOPS_WEAK_RE.search(title) and not CODE_WORD_RE.search(title)))
+    if devops:
+        add("devops")
+    if SECURITY_RE.search(title) and not devops:          # "DevSecOps" is DevOps; "Application Security Engineer" is Security
+        add("security")
+    if QA_RE.search(title):
+        add("qa")
+    if MOBILE_RE.search(title):
+        add("mobile")
+    if FRONTEND_RE.search(title):
+        add("frontend")
+    if FULLSTACK_RE.search(title):
+        add("fullstack")
+    # "Data Platform" in a DevOps title qualifies the job, it does not make it a data role; "Data Engineer" always is one
+    if DATA_RE.search(title) and not (devops and not re.search(r"data engineer|analytics engineer|etl", title, re.I)):
+        add("data")
+    if AI_RE.search(title):
+        add("ai")
+    if SOLUTIONS_RE.search(title):
+        add("solutions")
+    if OFF_STACK_TITLE_RE.search(title):
+        return roles or ["other"]                          # Salesforce / Shopify / PHP / .NET... are not your stack and not backend here
+    if BACKEND_EXPLICIT_RE.search(title):
+        add("backend")
+    elif not roles and BACKEND_GENERIC_RE.search(title):
+        add("backend")                                     # a plain "Software Engineer" that nothing else claimed
+    if not roles:                                          # the title says nothing: let the technologies decide
+        if len(t & AI_TECH) >= 2:
+            add("ai")
+        elif t & BACKEND_TECH:
+            add("backend")
     return roles or ["other"]
 
 
@@ -403,7 +458,8 @@ def make_job(*, source, title, company, url, posted, text, job_type="", location
         "url": url, "posted": posted, "type": job_type or ("Contract / freelance" if freelance else ""),
         "location": location, "pay": pay, "usd": bool(usd), "anywhere": bool(anywhere),
         "freelance": bool(freelance), "dev": core >= MIN_CORE, "fit": fit, "matched": matched, "blocked": blocked,
-        "tech": tech, "roles": detect_roles(title, tech), "eng": not NOT_ENGINEERING_TITLE_RE.search(title),
+        # Some posts (Hacker News) have no usable title; for those, the opening of the text says what the job is
+        "tech": tech, "roles": detect_roles(title if ENG_POS_RE.search(title) else f"{title} {text[:160]}", tech), "eng": is_engineering(title, core),
         "email": email or find_email(text),
         "snippet": re.sub(r"\s+", " ", text)[:260],
         "desc": re.sub(r"\n{3,}", "\n\n", text).strip()[:2400],
@@ -728,7 +784,7 @@ APPLY_MODE = {"HN Who's Hiring": "direct", "HN Freelancer": "direct", "Remotive"
               "We Work Remotely": "signup", "Jobicy": "signup", "Himalayas": "free", "Himalayas India": "free",
               CAREERS: "direct"}   # the employer's own posting, no account needed
 # Bump when the job fields change, so old published rows are never mixed with new ones.
-SCHEMA = 10
+SCHEMA = 11
 # The fields every job carries, taken from make_job itself so it can never drift from the code that builds jobs.
 JOB_KEYS = set(make_job(source="", title="", company="", url="", posted=None, text="").keys()) | {"apply"}
 # Sources that ask for gentle use are only re-fetched this often (seconds); between fetches the previous results are reused.

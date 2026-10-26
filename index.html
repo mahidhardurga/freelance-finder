@@ -477,11 +477,16 @@ const APPLY = {
 const STATUS = [["saved", "Saved"], ["applied", "Applied"], ["interview", "Interview"], ["offer", "Offer"], ["rejected", "Rejected"]];
 const STATUS_LABEL = Object.fromEntries(STATUS);
 const AI_LABELS = ["AI agents", "LLM", "RAG", "Prompt engineering"];
-const ROLE_ORDER = ["devops", "backend", "ai", "fullstack", "data", "other"];
-const ROLE_LABEL = { devops: "DevOps · SRE · Cloud", backend: "Backend", ai: "AI & ML", fullstack: "Full-stack", data: "Data", other: "Other" };
-const ROLE_SHORT = { devops: "DevOps / SRE", backend: "Backend", ai: "AI & ML", fullstack: "Full-stack", data: "Data", other: "" };
-const ROLE_HELP = { devops: "DevOps, SRE, platform, cloud, infrastructure", backend: "Java, Spring, Python, Node, APIs", ai: "LLMs, agents, ML, data science",
-                    fullstack: "Front and back end together", data: "Data engineering and analytics", other: "Anything else" };
+const ROLE_ORDER = ["devops", "backend", "frontend", "fullstack", "mobile", "ai", "data", "security", "qa", "solutions", "other"];
+const ROLE_LABEL = { devops: "DevOps · SRE · Cloud", backend: "Backend", frontend: "Frontend", fullstack: "Full-stack", mobile: "Mobile", ai: "AI & ML", data: "Data",
+                     security: "Security", qa: "QA & Test", solutions: "Solutions & Support", other: "Other engineering" };
+const ROLE_SHORT = { devops: "DevOps / SRE", backend: "Backend", frontend: "Frontend", fullstack: "Full-stack", mobile: "Mobile", ai: "AI & ML", data: "Data",
+                     security: "Security", qa: "QA", solutions: "Solutions", other: "" };
+const ROLE_HELP = { devops: "DevOps, SRE, platform, cloud, infrastructure engineers", backend: "Java, Spring, Python, Go, APIs; plain “Software Engineer”",
+                    frontend: "Frontend, UI, React / Vue / Angular", fullstack: "Front and back end together", mobile: "iOS, Android, React Native, Flutter",
+                    ai: "ML, LLMs, AI engineers, data scientists", data: "Data engineering, analytics engineering, ETL", security: "Application, cloud and operations security",
+                    qa: "QA, SDET, test engineers", solutions: "Solutions architects, forward-deployed, support and escalation engineers",
+                    other: "Engineering roles that fit none of the above (staff engineer, IT, Salesforce…)" };
 
 const safeUrl = u => { try { const x = new URL(u); return /^https?:$/.test(x.protocol) ? x.href : null; } catch (e) { return null; } };
 const isEmail = e => typeof e === "string" && /^[\w.+-]+@[\w.-]+\.[a-z]{2,}$/i.test(e);
@@ -686,7 +691,7 @@ function renderSidebar() {
   // Role
   const rCount = countBy(pool("roles"), j => j.roles || ["other"]);
   [d, b] = section("role", "Role", true, F.roles.length || "");
-  ROLE_ORDER.forEach(r => b.append(checkRow(ROLE_LABEL[r], rCount.get(r) || 0, F.roles.includes(r), on => change(f => toggleIn(f.roles, r, on)), ROLE_HELP[r])));
+  ROLE_ORDER.filter(r => (rCount.get(r) || 0) > 0 || F.roles.includes(r)).forEach(r => b.append(checkRow(ROLE_LABEL[r], rCount.get(r) || 0, F.roles.includes(r), on => change(f => toggleIn(f.roles, r, on)), ROLE_HELP[r])));
   body.append(d);
   // Work
   [d, b] = section("work", "Work", true);

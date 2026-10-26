@@ -39,7 +39,11 @@ Not covered: companies on other systems (Workday, SuccessFactors, Taleo, custom 
 
 ## Roles
 Core skills are Java / Spring / microservices, AI (agents, LLMs, RAG) and cloud / DevOps / SRE (Kubernetes, Terraform / IaC, CI/CD, AWS / Azure / GCP).
-Each job also gets `roles` (devops, backend, ai, fullstack, data, other) from its title and technologies, which drives the **Role** filter.
+Each job also gets `roles` (devops, backend, frontend, fullstack, mobile, ai, data, security, qa, solutions, other) which drives the **Role** filter.
+The **title** decides the role, with separate rules per role and a few precedence rules (e.g. "Full Stack Engineer" is Full-stack, not Backend; "AI Platform
+Engineer" is AI, not DevOps; DevOps needs an explicit DevOps / SRE / cloud / infrastructure-engineer title). Technologies in the description never decide a
+role. A job also has to pass a positive "is this engineering?" test on its title (an engineer / developer / architect / scientist word), so jobs like
+Account Executive or Medical Coder never appear under a role. Each rule set is checked against a list of hand-picked titles when it changes.
 Note that nearly all DevOps / SRE listings on public boards are full-time, so the default Hours filter hides most of them: widen Hours to see them.
 
 ## Tuning
