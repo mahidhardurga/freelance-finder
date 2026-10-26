@@ -113,8 +113,8 @@ OFF_STACK_TITLE_RE = re.compile(
 # Not engineering work at all. Always dropped, even if the title says "AI".
 NOT_ENGINEERING_TITLE_RE = re.compile(
     r"\b(annotat\w*|data entry|marketing|sales|copywriter|writer|designer|recruiter|accountant|customer|support|"
-    r"co-?founder|ceo|cto|coo|legal|finance|manager|sourcing|director|vp|"
-    r"trainer|tutor|instructor|teacher)\b", re.I)
+    r"co-?founder|ceo|cto|coo|legal|finance|manager|sourcing|director|vp|gtm|revenue|enablement|people operations|human resources|hr|"
+    r"product (lead|owner|analyst|marketing|operations)|trainer|tutor|instructor|teacher)\b", re.I)
 CORE_LABELS = {"Java", "Spring Boot", "Spring", "Microservices", "AI agents", "LLM", "RAG", "Prompt engineering", "AI/ML",
                "DevOps/SRE", "Cloud", "Kubernetes", "IaC", "CI/CD"}
 
@@ -170,10 +170,20 @@ def find_tech(title: str, text: str) -> list[str]:
 
 
 # --------------------------------------------------------------------------- role type (for the "Role" filter)
-DEVOPS_TITLE_RE = re.compile(
-    r"\b(dev[\s-]?ops|dev[\s-]?sec[\s-]?ops|sre|site reliability|reliability engineer(ing)?|platform engineer(ing)?|infrastructure|"
-    r"cloud (engineer(ing)?|architect(ure)?|ops|infrastructure|platform|native|developer)|release engineer(ing)?|build engineer|kubernetes|"
-    r"sysadmin|system administrator|mlops|finops|observability)\b", re.I)
+# The role comes from the TITLE (what the job is), never from technologies mentioned in the description: an AI or data engineer whose
+# posting lists Kubernetes and Terraform is still not a DevOps role.
+# Strong: the title says the job IS DevOps / SRE / cloud / infrastructure engineering, whatever else it says ("Software Engineer - SRE").
+DEVOPS_STRONG_RE = re.compile(
+    r"\b(dev[\s-]?ops|dev[\s-]?sec[\s-]?ops|sre|site reliability|(database|data|platform|systems?|infrastructure)?\s*reliability engineer(ing)?|ml[\s/-]?ops|"
+    r"release engineer(ing)?|build (and release )?engineer|production engineer(ing)?|sysadmin|(system|systems) administrator|"
+    r"cloud (engineer(ing)?|architect(ure)?|operations|ops|infrastructure|platform|native|network|administrator|devops)|"
+    r"(infrastructure|infra) (engineer(ing)?|architect(ure)?)|(platform|systems?) architect|kubernetes (engineer|administrator|specialist|operator)|"
+    r"gitops|observability engineer)\b", re.I)
+# Weak: only count when the title has no coding / AI / data wording ("Software Engineer, Infrastructure" is backend, "AI Platform Engineer" is AI).
+DEVOPS_WEAK_RE = re.compile(r"\b(infrastructure|platform engineer(ing)?|kubernetes|k8s|observability|finops)\b", re.I)
+CODE_WORD_RE = re.compile(
+    r"\b(software|developer|full[\s-]?stack|front-?end|back-?end|member of technical staff|programmer|application|ai|ml|machine learning|llm|"
+    r"data|research|security|solutions?|sales|field|support)\b", re.I)
 BACKEND_TITLE_RE = re.compile(
     r"\b(back-?end|server[\s-]side|java|spring|golang|go (developer|engineer)|python|node(\.?js)?|rust|kotlin|api|microservices?|"
     r"software (engineer|developer)|application developer)\b", re.I)
@@ -190,17 +200,18 @@ def detect_roles(title: str, tech: list[str]) -> list[str]:
     A job can be several (an 'AI platform engineer' is both). 'other' when nothing fits."""
     roles = []
     t = set(tech)
-    code_title = BACKEND_TITLE_RE.search(title) or FULLSTACK_TITLE_RE.search(title) or FRONTEND_TITLE_RE.search(title)
-    if DEVOPS_TITLE_RE.search(title) or (len(t & DEVOPS_TECH) >= 4 and re.search(r"\bengineer(s|ing)?\b", title, re.I) and not code_title):
+    if DEVOPS_STRONG_RE.search(title) or (DEVOPS_WEAK_RE.search(title) and not CODE_WORD_RE.search(title)):
         roles.append("devops")
     if BACKEND_TITLE_RE.search(title) or (t & {"Spring Boot", "Spring", "Microservices"} and re.search(r"\b(engineer|developer)\b", title, re.I) and "devops" not in roles):
         roles.append("backend")
     if FULLSTACK_TITLE_RE.search(title):
         roles.append("fullstack")
-    if AI_TITLE_RE.search(title) or (len(t & AI_TECH) >= 2 and "devops" not in roles):
+    if AI_TITLE_RE.search(title):
         roles.append("ai")
     if DATA_TITLE_RE.search(title):
         roles.append("data")
+    if not roles and len(t & AI_TECH) >= 2:
+        roles.append("ai")        # nothing in the title says what it is: let the technologies decide, for AI only
     return roles or ["other"]
 
 
@@ -717,7 +728,7 @@ APPLY_MODE = {"HN Who's Hiring": "direct", "HN Freelancer": "direct", "Remotive"
               "We Work Remotely": "signup", "Jobicy": "signup", "Himalayas": "free", "Himalayas India": "free",
               CAREERS: "direct"}   # the employer's own posting, no account needed
 # Bump when the job fields change, so old published rows are never mixed with new ones.
-SCHEMA = 9
+SCHEMA = 10
 # The fields every job carries, taken from make_job itself so it can never drift from the code that builds jobs.
 JOB_KEYS = set(make_job(source="", title="", company="", url="", posted=None, text="").keys()) | {"apply"}
 # Sources that ask for gentle use are only re-fetched this often (seconds); between fetches the previous results are reused.
