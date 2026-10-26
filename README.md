@@ -1,7 +1,9 @@
 # Freelance Finder
 
 Remote freelance and contract jobs you can do from anywhere, paid in USD, matched against a Java / Spring / microservices / AI stack.
-Netflix-style browsing: hero billboard, carousels, detail modal, My List. Free public sources only, no accounts and no API keys.
+A job-search interface: filters on the left, results in the middle, the full posting on the right; light and dark themes; a saved-jobs
+and application tracker with notes and CSV export; email drafts; shareable filter links; keyboard shortcuts (press `?`). Everything the
+tracker, notes and profile store stays in your browser. Free public sources only, no accounts and no API keys.
 
 Live: https://freelance.mahidhardurga.in
 

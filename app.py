@@ -232,7 +232,7 @@ def himalayas_pay(j: dict) -> str:
         a, b = inr(float(lo)), inr(float(hi))
     else:
         a, b = f"{cur or ''} {money(lo)}".strip(), money(hi)
-    return f"{a}/{unit}" if a == b else f"{a}-{b}/{unit}"
+    return f"{a}/{unit}" if a == b or float(lo) == float(hi) else f"{a}-{b}/{unit}"
 
 
 # --------------------------------------------------------------------------- India: place, work mode, pay currency
