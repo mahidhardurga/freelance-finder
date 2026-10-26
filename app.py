@@ -84,11 +84,18 @@ STACK = {
     "RAG":               (r"\brag\b|\bretrieval[\s-]augmented\b|\bvector (db|database|search|store)s?\b|\bembeddings?\b", 4),
     "Prompt engineering": (r"\bprompt (engineering|design)\b|\blangchain\b|\bllamaindex\b|\bmcp\b|\bmodel context protocol\b", 3),
     "AI/ML":             (r"\b(ai|a\.i\.|machine learning|ml|nlp|chatbots?)\b", 1),
+    # core: cloud / DevOps / SRE
+    "DevOps/SRE":        (r"\b(dev[\s-]?ops|dev[\s-]?sec[\s-]?ops|sre|site reliability|reliability engineer(ing)?|platform engineer(ing)?|infrastructure engineer(ing)?|"
+                          r"release engineer(ing)?|build engineer|cloud ops|sysadmin|system administrator|mlops|finops)\b", 4),
+    "Cloud":             (r"\b(aws|amazon web services|azure|gcp|google cloud|cloud (engineer(ing)?|architect(ure)?|infrastructure|platform|native|migration))\b", 3),
+    "Kubernetes":        (r"\b(kubernetes|k8s|helm|openshift|eks|aks|gke)\b", 3),
+    "IaC":               (r"\b(terraform|ansible|pulumi|cloudformation|opentofu|infrastructure[\s-]as[\s-]code)\b", 3),
+    "CI/CD":             (r"\b(ci\s*/\s*cd|cicd|jenkins|github actions|gitlab ci|argo ?cd|gitops|circleci|spinnaker)\b", 3),
     # supporting skills from your profile
     "REST APIs":         (r"\b(rest(ful)?[\s-]?apis?|web services|api (development|integration|design))\b", 2),
-    "AWS":               (r"\b(aws|amazon web services|ec2|lambda)\b", 2),
-    "Docker/K8s":        (r"\b(docker|kubernetes|k8s|helm)\b", 1),
-    "DevOps/CI-CD":      (r"\b(devops|ci/?cd|jenkins|terraform|gitlab ci)\b", 1),
+    "Docker":            (r"\bdocker\b", 1),
+    "Observability":     (r"\b(observability|prometheus|grafana|datadog|new relic|opentelemetry|splunk)\b", 2),
+    "Linux/Bash":        (r"\b(linux|bash|shell scripting)\b", 1),
     "Databases":         (r"\b(postgres(ql)?|mysql|db2|sql)\b", 1),
     "Backend":           (r"\b(back-?end|server-side|distributed systems?)\b", 1),
     "Python/FastAPI":    (r"\b(fastapi|python)\b", 1),
@@ -108,7 +115,8 @@ NOT_ENGINEERING_TITLE_RE = re.compile(
     r"\b(annotat\w*|data entry|marketing|sales|copywriter|writer|designer|recruiter|accountant|customer|support|"
     r"co-?founder|ceo|cto|coo|legal|finance|manager|sourcing|director|vp|"
     r"trainer|tutor|instructor|teacher)\b", re.I)
-CORE_LABELS = {"Java", "Spring Boot", "Spring", "Microservices", "AI agents", "LLM", "RAG", "Prompt engineering", "AI/ML"}
+CORE_LABELS = {"Java", "Spring Boot", "Spring", "Microservices", "AI agents", "LLM", "RAG", "Prompt engineering", "AI/ML",
+               "DevOps/SRE", "Cloud", "Kubernetes", "IaC", "CI/CD"}
 
 # --------------------------------------------------------------------------- tech tags (for the "Tech stack" filter)
 # Independent of the fit score above: every technology mentioned anywhere in a posting is recorded on the job, so the page
@@ -131,8 +139,13 @@ TECH_GROUPS = [
     }),
     ("Cloud & DevOps", {
         "AWS": r"\b(aws|amazon web services|ec2|cloudformation)\b", "Azure": r"\bazure\b", "GCP": r"\b(gcp|google cloud)\b",
-        "Docker": r"\bdocker\b", "Kubernetes": r"\b(kubernetes|k8s|helm|eks|gke)\b", "Terraform": r"\b(terraform|pulumi|ansible)\b",
-        "CI/CD": r"\bci\s*/\s*cd\b|\bcicd\b|\bjenkins\b|\bgithub actions\b|\bgitlab ci\b", "Linux": r"\blinux\b",
+        "Docker": r"\bdocker\b", "Kubernetes": r"\b(kubernetes|k8s|helm|openshift|eks|aks|gke)\b",
+        "Terraform": r"\b(terraform|opentofu|pulumi)\b", "Ansible": r"\bansible\b",
+        "CI/CD": r"\bci\s*/\s*cd\b|\bcicd\b|\bjenkins\b|\bgithub actions\b|\bgitlab ci\b|\bcircleci\b",
+        "GitOps": r"\b(gitops|argo ?cd|flux ?cd)\b",
+        "Observability": r"\b(observability|prometheus|grafana|datadog|new relic|opentelemetry|splunk)\b",
+        "Serverless": r"\b(serverless|aws lambda|cloud functions|azure functions)\b",
+        "SRE": r"\b(sre|site reliability)\b", "Linux": r"\blinux\b", "Bash/Shell": r"\b(bash|shell scripting|powershell)\b",
     }),
     ("Data", {
         "PostgreSQL": r"\bpostgres(ql)?\b", "MySQL": r"\b(mysql|mariadb)\b", "MongoDB": r"\bmongo(db)?\b", "Redis": r"\bredis\b",
@@ -154,6 +167,41 @@ TECH_GROUPS_OUT = [[name, list(group)] for name, group in TECH_GROUPS]   # what 
 def find_tech(title: str, text: str) -> list[str]:
     blob = f"{title}\n{text[:8000]}"
     return [label for label, rx in TECH_RE.items() if rx.search(blob)]
+
+
+# --------------------------------------------------------------------------- role type (for the "Role" filter)
+DEVOPS_TITLE_RE = re.compile(
+    r"\b(dev[\s-]?ops|dev[\s-]?sec[\s-]?ops|sre|site reliability|reliability engineer(ing)?|platform engineer(ing)?|infrastructure|"
+    r"cloud (engineer(ing)?|architect(ure)?|ops|infrastructure|platform|native|developer)|release engineer(ing)?|build engineer|kubernetes|"
+    r"sysadmin|system administrator|mlops|finops|observability)\b", re.I)
+BACKEND_TITLE_RE = re.compile(
+    r"\b(back-?end|server[\s-]side|java|spring|golang|go (developer|engineer)|python|node(\.?js)?|rust|kotlin|api|microservices?|"
+    r"software (engineer|developer)|application developer)\b", re.I)
+FULLSTACK_TITLE_RE = re.compile(r"\bfull[\s-]?stack\b", re.I)
+FRONTEND_TITLE_RE = re.compile(r"\b(front-?end|ui engineer|react developer|angular developer)\b", re.I)
+AI_TITLE_RE = re.compile(r"\b(ai|a\.i\.|ml|machine learning|llm|nlp|deep learning|data scientist|generative|agentic|agents?|prompt|computer vision|mlops)\b", re.I)
+DATA_TITLE_RE = re.compile(r"\b(data (engineer(ing)?|platform|analyst|architect)|analytics engineer|etl|big data|bi developer)\b", re.I)
+DEVOPS_TECH = {"Kubernetes", "Terraform", "Ansible", "CI/CD", "GitOps", "Observability", "Docker", "AWS", "Azure", "GCP", "SRE", "Linux", "Serverless"}
+AI_TECH = {"AI agents", "LLM", "RAG", "Prompt engineering", "LangChain", "MCP", "Machine learning", "NLP"}
+
+
+def detect_roles(title: str, tech: list[str]) -> list[str]:
+    """Which kinds of role this is, mostly from the title (what the job IS), with the technologies as a fallback.
+    A job can be several (an 'AI platform engineer' is both). 'other' when nothing fits."""
+    roles = []
+    t = set(tech)
+    code_title = BACKEND_TITLE_RE.search(title) or FULLSTACK_TITLE_RE.search(title) or FRONTEND_TITLE_RE.search(title)
+    if DEVOPS_TITLE_RE.search(title) or (len(t & DEVOPS_TECH) >= 4 and re.search(r"\bengineer(s|ing)?\b", title, re.I) and not code_title):
+        roles.append("devops")
+    if BACKEND_TITLE_RE.search(title) or (t & {"Spring Boot", "Spring", "Microservices"} and re.search(r"\b(engineer|developer)\b", title, re.I) and "devops" not in roles):
+        roles.append("backend")
+    if FULLSTACK_TITLE_RE.search(title):
+        roles.append("fullstack")
+    if AI_TITLE_RE.search(title) or (len(t & AI_TECH) >= 2 and "devops" not in roles):
+        roles.append("ai")
+    if DATA_TITLE_RE.search(title):
+        roles.append("data")
+    return roles or ["other"]
 
 
 def score_fit(title: str, text: str) -> tuple[int, list[str], int]:
@@ -336,6 +384,7 @@ def make_job(*, source, title, company, url, posted, text, job_type="", location
         anywhere = loc_ok and not RESTRICTED_RE.search(f"{location} {text[:1500]}")
     india, city = detect_india(title, location, text)
     commit, hours = detect_commitment(title, job_type, text)
+    tech = find_tech(title, f"{job_type} {text}")
     return {
         "id": url, "source": source, "title": title.strip()[:160], "company": (company or "").strip()[:80],
         "india": india, "city": city, "mode": detect_mode(location, text), "currency": detect_currency(pay, text),
@@ -343,7 +392,7 @@ def make_job(*, source, title, company, url, posted, text, job_type="", location
         "url": url, "posted": posted, "type": job_type or ("Contract / freelance" if freelance else ""),
         "location": location, "pay": pay, "usd": bool(usd), "anywhere": bool(anywhere),
         "freelance": bool(freelance), "dev": core >= MIN_CORE, "fit": fit, "matched": matched, "blocked": blocked,
-        "tech": find_tech(title, f"{job_type} {text}"), "eng": not NOT_ENGINEERING_TITLE_RE.search(title),
+        "tech": tech, "roles": detect_roles(title, tech), "eng": not NOT_ENGINEERING_TITLE_RE.search(title),
         "email": email or find_email(text),
         "snippet": re.sub(r"\s+", " ", text)[:260],
         "desc": re.sub(r"\n{3,}", "\n\n", text).strip()[:2400],
@@ -526,7 +575,7 @@ SOURCE_LABELS = {
 APPLY_MODE = {"HN Who's Hiring": "direct", "HN Freelancer": "direct", "Remotive": "direct",
               "We Work Remotely": "signup", "Jobicy": "signup", "Himalayas": "free", "Himalayas India": "free"}
 # Bump when the job fields change, so old published rows are never mixed with new ones.
-SCHEMA = 7
+SCHEMA = 8
 # The fields every job carries, taken from make_job itself so it can never drift from the code that builds jobs.
 JOB_KEYS = set(make_job(source="", title="", company="", url="", posted=None, text="").keys()) | {"apply"}
 # Sources that ask for gentle use are only re-fetched this often (seconds); between fetches the previous results are reused.

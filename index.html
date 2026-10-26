@@ -420,7 +420,7 @@ const KEYS = { filters: "ff_filters_v2", seen: "ff_seen_v1", track: "ff_track_v1
 
 /* ------------------------------------------------------------------ filters */
 const DEFAULT_COMMIT = ["part_time", "contract"];
-const DEFAULTS = () => ({ commit: [...DEFAULT_COMMIT], sites: null, stack: [], stackAll: false, anywhere: false, india: false, usd: false, contract: false, email: false,
+const DEFAULTS = () => ({ commit: [...DEFAULT_COMMIT], sites: null, stack: [], stackAll: false, roles: [], anywhere: false, india: false, usd: false, contract: false, email: false,
                           freeOnly: true, restricted: false, cities: [], modes: [], currencies: [] });
 let F = DEFAULTS();
 const UI = { tab: "discover", sort: "best", q: "", selected: null, shown: 50, open: {}, techAll: false, techQ: "" };
@@ -430,7 +430,8 @@ const strs = v => Array.isArray(v) ? v.filter(x => typeof x === "string") : [];
 function sanitizeFilters(o) {
   const d = DEFAULTS(); if (!o || typeof o !== "object") return d;
   for (const k of ["anywhere", "india", "usd", "contract", "email", "freeOnly", "restricted", "stackAll"]) if (typeof o[k] === "boolean") d[k] = o[k];
-  for (const k of ["commit", "stack", "cities", "modes", "currencies"]) if (Array.isArray(o[k])) d[k] = strs(o[k]);
+  for (const k of ["commit", "stack", "roles", "cities", "modes", "currencies"]) if (Array.isArray(o[k])) d[k] = strs(o[k]);
+  d.roles = d.roles.filter(r => ROLE_ORDER.includes(r));
   d.commit = d.commit.filter(c => ["part_time", "contract", "unspecified", "full_time"].includes(c));
   d.sites = Array.isArray(o.sites) && strs(o.sites).length ? strs(o.sites) : null;
   return d;
@@ -476,6 +477,11 @@ const APPLY = {
 const STATUS = [["saved", "Saved"], ["applied", "Applied"], ["interview", "Interview"], ["offer", "Offer"], ["rejected", "Rejected"]];
 const STATUS_LABEL = Object.fromEntries(STATUS);
 const AI_LABELS = ["AI agents", "LLM", "RAG", "Prompt engineering"];
+const ROLE_ORDER = ["devops", "backend", "ai", "fullstack", "data", "other"];
+const ROLE_LABEL = { devops: "DevOps · SRE · Cloud", backend: "Backend", ai: "AI & ML", fullstack: "Full-stack", data: "Data", other: "Other" };
+const ROLE_SHORT = { devops: "DevOps / SRE", backend: "Backend", ai: "AI & ML", fullstack: "Full-stack", data: "Data", other: "" };
+const ROLE_HELP = { devops: "DevOps, SRE, platform, cloud, infrastructure", backend: "Java, Spring, Python, Node, APIs", ai: "LLMs, agents, ML, data science",
+                    fullstack: "Front and back end together", data: "Data engineering and analytics", other: "Anything else" };
 
 const safeUrl = u => { try { const x = new URL(u); return /^https?:$/.test(x.protocol) ? x.href : null; } catch (e) { return null; } };
 const isEmail = e => typeof e === "string" && /^[\w.+-]+@[\w.-]+\.[a-z]{2,}$/i.test(e);
@@ -528,9 +534,10 @@ const textOk = j => {
 // skip: leave one filter group out, so a group's own counts show what ticking it would give. When technologies are picked or you search,
 // the default "matches my Java/AI profile" gate becomes "is an engineering job": an explicit choice beats my scoring.
 function pool(skip) {
-  const picking = skip === "stack" || F.stack.length > 0 || UI.q.trim().length > 0;
+  const picking = skip === "stack" || F.stack.length > 0 || F.roles.length > 0 || UI.q.trim().length > 0;
   return data.jobs.filter(j => (picking ? j.eng !== false : j.dev)
     && (skip === "stack" || stackOk(j)) && (!F.india || j.india)
+    && (skip === "roles" || !F.roles.length || F.roles.some(r => (j.roles || ["other"]).includes(r)))
     && (skip === "where" || whereOk(j))
     && (skip === "commit" || !F.commit.length || F.commit.includes(j.commit || "unspecified"))
     && (skip === "sites" || !F.sites || F.sites.includes(j.source))
@@ -593,6 +600,7 @@ function jobTags(j, limit) {
   if (j.commit === "part_time") t.push(["Part-time" + (j.hours ? " · ~" + j.hours + " h/wk" : ""), "good"]);
   else if (j.commit === "full_time") t.push(["Full-time", ""]);
   if (j.freelance && j.commit !== "part_time") t.push(["Contract", "accent"]);
+  const role = (j.roles || []).find(r => ROLE_SHORT[r]); if (role) t.push([ROLE_SHORT[role], ""]);
   if (j.blocked) t.push(["⚠ " + j.blocked, "bad"]);
   else if (j.anywhere) t.push(["Remote · anywhere", ""]);
   if (j.india) t.push(["📍 " + (j.city || "India"), "warn"]);
@@ -618,6 +626,8 @@ function updateStats() {
   };
   box.append(mk("jobs match", now.length));
   box.append(mk("part-time", part, () => { change(f => { f.commit = ["part_time"]; }); UI.tab = "discover"; renderTabs(); }, part > 0));
+  const ops = pool("roles").filter(j => (j.roles || []).includes("devops")).length;   // what you would get with your current filters (incl. Hours)
+  box.append(mk("DevOps / SRE", ops, () => change(f => { f.roles = ["devops"]; })));
   box.append(mk("paid in USD", usd, () => change(f => { f.usd = true; })));
   box.append(mk("India-based", ind, () => change(f => { f.india = true; })));
   box.append(el("span", "spacer"));
@@ -669,6 +679,11 @@ function renderSidebar() {
   const cBase = pool("commit"), cCount = countBy(cBase, j => [j.commit || "unspecified"]);
   let [d, b] = section("hours", "Hours", true, !arraysEq(F.commit, DEFAULT_COMMIT) ? "•" : "");
   for (const k of ["part_time", "contract", "unspecified", "full_time"]) b.append(checkRow(COMMIT_LABEL[k], cCount.get(k) || 0, F.commit.includes(k), on => change(f => toggleIn(f.commit, k, on)), COMMIT_HELP[k]));
+  body.append(d);
+  // Role
+  const rCount = countBy(pool("roles"), j => j.roles || ["other"]);
+  [d, b] = section("role", "Role", true, F.roles.length || "");
+  ROLE_ORDER.forEach(r => b.append(checkRow(ROLE_LABEL[r], rCount.get(r) || 0, F.roles.includes(r), on => change(f => toggleIn(f.roles, r, on)), ROLE_HELP[r])));
   body.append(d);
   // Work
   [d, b] = section("work", "Work", true);
@@ -730,6 +745,7 @@ function renderChips() {
   const box = $("#active"); box.replaceChildren();
   const add = (label, remove) => { const c = el("span", "achip"); c.append(el("span", null, label)); const x = el("button"); x.type = "button"; x.setAttribute("aria-label", "Remove " + label); x.append(icon("x", 12)); x.addEventListener("click", () => change(remove)); c.append(x); box.append(c); };
   if (!arraysEq(F.commit, DEFAULT_COMMIT)) add("Hours: " + (F.commit.length ? F.commit.map(k => COMMIT_LABEL[k]).join(" + ") : "any"), f => { f.commit = [...DEFAULT_COMMIT]; });
+  F.roles.forEach(r => add(ROLE_LABEL[r], f => toggleIn(f.roles, r, false)));
   const flags = { anywhere: "Remote anywhere", india: "India-based", usd: "Paid in USD", contract: "Contract wording", email: "Has email", restricted: "Incl. restricted" };
   for (const [k, l] of Object.entries(flags)) if (F[k]) add(l, f => { f[k] = false; });
   if (!F.freeOnly) add("Incl. sign-up walls", f => { f.freeOnly = true; });
@@ -863,6 +879,7 @@ function renderDetail(keepScroll) {
   const facts = el("div", "facts");
   facts.append(fact("Pay", j.pay || "Not listed", j.pay ? (j.currency ? "in " + j.currency : "") : ""));
   facts.append(fact("Hours", COMMIT_LABEL[j.commit] || "Not stated", j.hours ? "about " + j.hours + " hrs/week" : COMMIT_HELP[j.commit] || ""));
+  facts.append(fact("Role", (j.roles || ["other"]).map(r => ROLE_LABEL[r] || r).join(" · ")));
   facts.append(fact("Work mode", MODE_LABEL[j.mode || "unspecified"], j.anywhere ? "Open to people anywhere" : ""));
   facts.append(fact("Location", (j.city ? j.city + ", " : "") + (j.location || "Not stated")));
   facts.append(fact("Type", j.type || "Not stated"));

@@ -28,6 +28,11 @@ Each job is tagged by what Apply does: **direct** (straight to the employer or a
 (We Work Remotely, Jobicy) or **free to apply** (Himalayas: applying goes through a free Himalayas account and the free plan has no payment step; checked signed in on 2026-10-19). The page shows direct and free-to-apply jobs by default. RemoteOK is deliberately not used,
 because its Apply button leads to a paid Premium page.
 
+## Roles
+Core skills are Java / Spring / microservices, AI (agents, LLMs, RAG) and cloud / DevOps / SRE (Kubernetes, Terraform / IaC, CI/CD, AWS / Azure / GCP).
+Each job also gets `roles` (devops, backend, ai, fullstack, data, other) from its title and technologies, which drives the **Role** filter.
+Note that nearly all DevOps / SRE listings on public boards are full-time, so the default Hours filter hides most of them: widen Hours to see them.
+
 ## Tuning
 Edit the `STACK` block at the top of the scoring section in `app.py` (skills and weights) and `MIN_CORE` for stricter matching.
 
