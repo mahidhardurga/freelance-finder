@@ -544,6 +544,144 @@ def src_hn():
     return out
 
 
+# --------------------------------------------------------------------------- company career pages
+# Companies publish their openings through their applicant-tracking system's public job-board feed (the same feed that powers the
+# "Careers" page on their own site). companies.json lists the boards to read; add a company by adding its board slug. Apply links go
+# straight to the employer's own posting. Only engineering roles that are remote or in India are kept, so the page stays usable.
+COMPANIES_FILE = Path(__file__).with_name("companies.json")
+CAREERS = "Company careers"
+MAX_PER_COMPANY = 60
+ENG_TITLE_RE = re.compile(
+    r"\b(engineer(s|ing)?|developer|devops|sre|architect|programmer|scientist|sdet|software|machine learning|ml|ai|security|platform|"
+    r"infrastructure|reliability|technical lead|tech lead|qa|quality assurance|dba|administrator)\b", re.I)
+WORLD_RE = re.compile(r"\b(anywhere|worldwide|global|international|work from home|wfh)\b", re.I)
+FILLER_RE = re.compile(
+    r"\b(remote|anywhere|worldwide|global|distributed|work from home|wfh|apac|asia|international|hybrid|flexible|home|based|work|location|"
+    r"locations|any|time zones?|first|in|the|world|of|and)\b|[^a-z ]", re.I)
+MODE_MAP = {"remote": "remote", "hybrid": "hybrid", "onsite": "onsite", "on-site": "onsite", "on site": "onsite"}
+
+
+def classify_location(parts) -> tuple[bool, bool, bool, str]:
+    """(keep, india, worldwide, cleaned text). A career-page location is kept when one of its places is in India, says worldwide / APAC
+    / anywhere, or is plain 'Remote' (employer-wide, so the posting text decides whether it is open to you). Any place that names a
+    specific other country or city ('Remote - US', 'London') is not for someone in India and is dropped."""
+    segs = [s.strip() for raw in parts for s in re.split(r"[;|/•\n]| or ", raw or "") if s and s.strip()]
+    india = world = generic = False
+    for s in segs:
+        if INDIA_WORD_RE.search(s) or any(rx.search(s) for rx in INDIA_CITIES_RE.values()):
+            india = True
+        elif FILLER_RE.sub(" ", s).strip():
+            continue                       # names some other specific place
+        elif WORLD_RE.search(s):
+            world = True
+        elif re.search(r"\b(remote|distributed|apac|asia)\b", s, re.I):
+            generic = True                 # a region (APAC / Asia) is not "anywhere", but it can include India, so keep it
+    return (india or world or generic), india, world, "; ".join(segs)[:140]
+
+
+def careers_job(company: str, e: dict) -> dict | None:
+    title = e["title"]
+    if not ENG_TITLE_RE.search(title) or NOT_ENGINEERING_TITLE_RE.search(title):
+        return None
+    keep, india, world, loc = classify_location(e["locs"])
+    if not keep:
+        return None
+    j = make_job(source=CAREERS, title=title, company=company, url=e["url"], posted=e.get("posted"), text=e["desc"][:2400],
+                 job_type=e.get("type", ""), location=loc, pay=e.get("pay", ""), anywhere=bool(world) and not RESTRICTED_RE.search(loc))
+    if e.get("mode"):
+        j["mode"] = e["mode"]
+    if j["commit"] == "unspecified":       # employer career pages list employee roles unless they say otherwise
+        j["commit"] = "full_time"
+        j["type"] = j["type"] or "Full-time (assumed: employer career page)"
+    j["desc"] = j["desc"][:1800]
+    return j
+
+
+def _gh(slug: str) -> list[dict]:
+    base = f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs"
+    picks = []
+    for j in get_json(base).get("jobs", []):
+        title = j.get("title", "")
+        if ENG_TITLE_RE.search(title) and not NOT_ENGINEERING_TITLE_RE.search(title) and classify_location([(j.get("location") or {}).get("name", "")])[0]:
+            picks.append(j)
+    picks.sort(key=lambda j: j.get("updated_at") or "", reverse=True)
+    out = []
+    for j in picks[:MAX_PER_COMPANY]:
+        d = get_json(f"{base}/{j['id']}")          # the single-job view has the full description and any published pay range
+        time.sleep(0.05)
+        locs = [(d.get("location") or {}).get("name", "")] + [o.get("location") or o.get("name", "") for o in d.get("offices") or []]
+        pay = ""
+        for r in d.get("pay_input_ranges") or []:
+            lo, hi, cur = (r.get("min_cents") or 0) / 100, (r.get("max_cents") or 0) / 100, r.get("currency_type") or ""
+            if lo and hi:
+                pay = f"{cur} {money(lo)}-{money(hi)}/yr"; break
+        out.append({"title": d.get("title", ""), "locs": locs, "url": d.get("absolute_url"), "posted": to_epoch(d.get("first_published") or d.get("updated_at")),
+                    "desc": strip_html(html.unescape(d.get("content") or "")), "pay": pay})
+    return out
+
+
+def _lever(slug: str) -> list[dict]:
+    out = []
+    for j in get_json(f"https://api.lever.co/v0/postings/{slug}?mode=json"):
+        cat = j.get("categories") or {}
+        locs = [cat.get("location") or ""] + list(cat.get("allLocations") or [])
+        wp = (j.get("workplaceType") or "").lower()
+        if wp == "remote" and not any(locs):
+            locs.append("Remote")
+        lists = " ".join(strip_html(x.get("content", "")) for x in j.get("lists") or [])
+        desc = f"{j.get('descriptionPlain') or ''}\n{lists}\n{j.get('additionalPlain') or ''}"
+        out.append({"title": j.get("text", ""), "locs": locs, "url": j.get("hostedUrl") or j.get("applyUrl"), "posted": to_epoch(j.get("createdAt")),
+                    "desc": desc, "type": cat.get("commitment") or "", "mode": MODE_MAP.get(wp)})
+    return out
+
+
+def _ashby(slug: str) -> list[dict]:
+    out = []
+    for j in get_json(f"https://api.ashbyhq.com/posting-api/job-board/{slug}?includeCompensation=true").get("jobs", []):
+        if j.get("isListed") is False:
+            continue
+        locs = [j.get("location") or ""] + [s.get("location", "") if isinstance(s, dict) else str(s) for s in j.get("secondaryLocations") or []]
+        if j.get("isRemote") and not any(locs):
+            locs.append("Remote")
+        et = {"FullTime": "Full-time", "PartTime": "Part-time", "Contract": "Contract", "Intern": "Intern", "Temporary": "Temporary"}.get(j.get("employmentType"), "")
+        out.append({"title": j.get("title", ""), "locs": locs, "url": j.get("jobUrl") or j.get("applyUrl"), "posted": to_epoch(j.get("publishedAt")),
+                    "desc": j.get("descriptionPlain") or strip_html(j.get("descriptionHtml") or ""), "type": et,
+                    "pay": ((j.get("compensation") or {}).get("compensationTierSummary") or "")[:60], "mode": MODE_MAP.get((j.get("workplaceType") or "").lower())})
+    return out
+
+
+def src_careers(prev_rows=()):
+    try:
+        companies = json.loads(COMPANIES_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        raise RuntimeError("companies.json is missing or unreadable")
+    fetchers = {"greenhouse": _gh, "lever": _lever, "ashby": _ashby}
+    before: dict[str, list] = {}
+    for r in prev_rows:
+        before.setdefault(r["company"], []).append(r)
+
+    def one(c):
+        try:
+            recs = fetchers[c["ats"]](c["slug"])
+        except Exception:
+            return c["name"], None                                  # board down or renamed: keep what we had for this company
+        rows = [j for j in (careers_job(c["name"], e) for e in recs if e.get("url")) if j]
+        rows.sort(key=lambda j: j["posted"] or 0, reverse=True)
+        return c["name"], rows[:MAX_PER_COMPANY]
+
+    with ThreadPoolExecutor(max_workers=12) as ex:
+        results = list(ex.map(one, companies))
+    out, failed = [], 0
+    for name, rows in results:
+        if rows is None:
+            failed += 1
+            rows = before.get(name, [])
+        out += rows
+    if failed == len(companies):
+        raise RuntimeError("every career board failed")
+    return out[:6000]
+
+
 SOURCES = {
     "HN (Who's hiring + Freelancer)": src_hn,
     "We Work Remotely": src_weworkremotely,
@@ -551,7 +689,9 @@ SOURCES = {
     "Jobicy": src_jobicy,
     "Himalayas": src_himalayas,
     "Himalayas India": src_himalayas_india,
+    CAREERS: src_careers,
 }
+SOURCES_WITH_PREV = {CAREERS}   # these are handed their previous rows, so one company's outage does not drop its jobs
 
 # --------------------------------------------------------------------------- aggregation + cache
 _cache = {"at": 0.0, "payload": None}
@@ -565,6 +705,7 @@ SOURCE_LABELS = {
     "Jobicy": ["Jobicy"],
     "Himalayas": ["Himalayas"],
     "Himalayas India": ["Himalayas India"],
+    CAREERS: [CAREERS],
 }
 # What happens when you press Apply (checked by following the real Apply buttons, 2026-10-18):
 #   direct  - goes straight to the employer / contact details, no account
@@ -573,13 +714,25 @@ SOURCE_LABELS = {
 #             no payment step; checked signed in on 2026-10-19)
 #   unknown - could not be verified
 APPLY_MODE = {"HN Who's Hiring": "direct", "HN Freelancer": "direct", "Remotive": "direct",
-              "We Work Remotely": "signup", "Jobicy": "signup", "Himalayas": "free", "Himalayas India": "free"}
+              "We Work Remotely": "signup", "Jobicy": "signup", "Himalayas": "free", "Himalayas India": "free",
+              CAREERS: "direct"}   # the employer's own posting, no account needed
 # Bump when the job fields change, so old published rows are never mixed with new ones.
-SCHEMA = 8
+SCHEMA = 9
 # The fields every job carries, taken from make_job itself so it can never drift from the code that builds jobs.
 JOB_KEYS = set(make_job(source="", title="", company="", url="", posted=None, text="").keys()) | {"apply"}
 # Sources that ask for gentle use are only re-fetched this often (seconds); between fetches the previous results are reused.
-SOURCE_TTL = {"Remotive": 6 * 3600, "Himalayas India": 2 * 3600}
+SOURCE_TTL = {"Remotive": 6 * 3600, "Himalayas India": 2 * 3600, CAREERS: 4 * 3600}
+
+
+TRACKING_PARAMS = {"ref", "source", "src", "gclid", "fbclid", "trk", "gh_src", "lever-source", "lever-origin"}
+
+
+def url_key(url: str) -> str:
+    """The URL with tracking parameters removed, used to spot the same job listed twice. Other query parameters stay: the id of a job
+    often lives in the query (Hacker News item?id=123, career pages ?gh_jid=123), and dropping it would merge different jobs into one."""
+    p = urllib.parse.urlsplit(url.strip().lower())
+    q = [(k, v) for k, v in urllib.parse.parse_qsl(p.query) if not (k.startswith("utm_") or k in TRACKING_PARAMS)]
+    return p._replace(query=urllib.parse.urlencode(q), fragment="").geturl()
 
 
 def fetch_all(prev: dict | None = None) -> dict:
@@ -606,7 +759,8 @@ def fetch_all(prev: dict | None = None) -> dict:
             rows = previous_rows(name)
             return name, rows, None, 0.0, ps["fetched_at"], True
         try:
-            return name, fn(), None, time.time() - t0, int(time.time()), False
+            rows = fn(previous_rows(name)) if name in SOURCES_WITH_PREV else fn()
+            return name, rows, None, time.time() - t0, int(time.time()), False
         except Exception as e:  # one broken source must not break the page
             rows = previous_rows(name)
             note = f"{type(e).__name__}: {e}" + (" (showing last good data)" if rows else "")
@@ -619,10 +773,7 @@ def fetch_all(prev: dict | None = None) -> dict:
         status.append({"source": name, "count": len(rows), "error": err, "seconds": round(secs, 1),
                        "fetched_at": fetched_at, "cached": cached})
         for j in rows:
-            # strip tracking params, but keep the query on HN links: their post id lives in it (item?id=123)
-            raw = (j["url"] or "").lower()
-            key = raw if "news.ycombinator.com" in raw else raw.split("?")[0]
-            key = key or (j["company"] + j["title"]).lower()
+            key = url_key(j["url"] or "") or (j["company"] + j["title"]).lower()
             if j["url"] and key not in seen:
                 seen.add(key)
                 j["apply"] = APPLY_MODE.get(j["source"], "unknown")
@@ -630,6 +781,8 @@ def fetch_all(prev: dict | None = None) -> dict:
     # The same job is often listed on several boards under different URLs: keep the copy that is easiest to apply to.
     def dupe_key(j):
         c, t = re.sub(r"\W+", "", j["company"].lower()), re.sub(r"\W+", "", j["title"].lower())
+        if j["source"] == CAREERS:
+            t += re.sub(r"\W+", "", (j.get("location") or "").lower())   # one title is often posted once per location: keep each
         return (c, t) if c and t else None  # posts without a clear company/title are never merged
 
     order, best = {"direct": 0, "free": 1, "unknown": 2, "signup": 3}, {}
@@ -644,7 +797,8 @@ def fetch_all(prev: dict | None = None) -> dict:
 
 def get_payload(force: bool = False) -> dict:
     if force or not _cache["payload"] or time.time() - _cache["at"] > CACHE_SECONDS:
-        _cache["payload"], _cache["at"] = fetch_all(), time.time()
+        # hand over the last payload so slow-moving sources (Remotive, career pages) are reused instead of re-downloaded on every refresh
+        _cache["payload"], _cache["at"] = fetch_all(_cache["payload"]), time.time()
     return _cache["payload"]
 
 
@@ -697,9 +851,17 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="Freelance Finder")
     ap.add_argument("--export", metavar="FILE", help="write jobs to FILE as JSON and exit (used by the GitHub Action)")
     ap.add_argument("--prev", metavar="FILE", help="previous jobs.json, used for per-source timing and fallbacks")
+    ap.add_argument("--port", type=int, default=PORT, help=f"port for the local server (default {PORT})")
     args = ap.parse_args()
     if args.export:
         export(args.export, args.prev)
     else:
-        print(f"Freelance Finder running at http://127.0.0.1:{PORT}  (Ctrl+C to stop)")
-        ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
+        import socket
+
+        try:   # Windows lets two programs bind the same port without an error, so check that nobody is already answering on it
+            socket.create_connection(("127.0.0.1", args.port), timeout=0.5).close()
+            raise SystemExit(f"Port {args.port} is already in use by another program. Start with a free one, e.g.  python app.py --port {args.port + 1}")
+        except OSError:
+            pass
+        print(f"Freelance Finder running at http://127.0.0.1:{args.port}  (Ctrl+C to stop)")
+        ThreadingHTTPServer(("127.0.0.1", args.port), Handler).serve_forever()

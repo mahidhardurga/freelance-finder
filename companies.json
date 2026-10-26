@@ -1,0 +1,1692 @@
+[
+{
+"name": "15Five",
+"ats": "lever",
+"slug": "15five"
+},
+{
+"name": "1Password",
+"ats": "ashby",
+"slug": "1password"
+},
+{
+"name": "Acorns",
+"ats": "ashby",
+"slug": "acorns"
+},
+{
+"name": "Adyen",
+"ats": "greenhouse",
+"slug": "adyen"
+},
+{
+"name": "Affirm",
+"ats": "greenhouse",
+"slug": "affirm"
+},
+{
+"name": "Airbnb",
+"ats": "greenhouse",
+"slug": "airbnb"
+},
+{
+"name": "Airbyte",
+"ats": "ashby",
+"slug": "airbyte"
+},
+{
+"name": "Airtable",
+"ats": "greenhouse",
+"slug": "airtable"
+},
+{
+"name": "Airwallex",
+"ats": "ashby",
+"slug": "airwallex"
+},
+{
+"name": "Akuity",
+"ats": "greenhouse",
+"slug": "akuity"
+},
+{
+"name": "Algolia",
+"ats": "greenhouse",
+"slug": "algolia"
+},
+{
+"name": "Amplitude",
+"ats": "ashby",
+"slug": "amplitude"
+},
+{
+"name": "Anchorage",
+"ats": "lever",
+"slug": "anchorage"
+},
+{
+"name": "Angi",
+"ats": "ashby",
+"slug": "angi"
+},
+{
+"name": "Anthropic",
+"ats": "greenhouse",
+"slug": "anthropic"
+},
+{
+"name": "Anyscale",
+"ats": "ashby",
+"slug": "anyscale"
+},
+{
+"name": "Anyscale",
+"ats": "lever",
+"slug": "anyscale"
+},
+{
+"name": "Apollo GraphQL",
+"ats": "ashby",
+"slug": "apollo-graphql"
+},
+{
+"name": "Appian",
+"ats": "greenhouse",
+"slug": "appian"
+},
+{
+"name": "Asana",
+"ats": "greenhouse",
+"slug": "asana"
+},
+{
+"name": "Ashby",
+"ats": "ashby",
+"slug": "ashby"
+},
+{
+"name": "Astranis",
+"ats": "greenhouse",
+"slug": "astranis"
+},
+{
+"name": "Astronomer",
+"ats": "ashby",
+"slug": "astronomer"
+},
+{
+"name": "Attentive",
+"ats": "greenhouse",
+"slug": "attentive"
+},
+{
+"name": "Backblaze",
+"ats": "greenhouse",
+"slug": "backblaze"
+},
+{
+"name": "Bandwidth",
+"ats": "greenhouse",
+"slug": "bandwidth"
+},
+{
+"name": "Baseten",
+"ats": "ashby",
+"slug": "baseten"
+},
+{
+"name": "Benchling",
+"ats": "ashby",
+"slug": "benchling"
+},
+{
+"name": "Betterment",
+"ats": "greenhouse",
+"slug": "betterment"
+},
+{
+"name": "Bill com",
+"ats": "greenhouse",
+"slug": "billcom"
+},
+{
+"name": "Binance",
+"ats": "lever",
+"slug": "binance"
+},
+{
+"name": "Bird",
+"ats": "greenhouse",
+"slug": "bird"
+},
+{
+"name": "Bitwarden",
+"ats": "greenhouse",
+"slug": "bitwarden"
+},
+{
+"name": "Block",
+"ats": "greenhouse",
+"slug": "block"
+},
+{
+"name": "Braze",
+"ats": "greenhouse",
+"slug": "braze"
+},
+{
+"name": "Brex",
+"ats": "greenhouse",
+"slug": "brex"
+},
+{
+"name": "Brilliant",
+"ats": "lever",
+"slug": "brilliant"
+},
+{
+"name": "Bubble",
+"ats": "ashby",
+"slug": "bubble"
+},
+{
+"name": "Buildkite",
+"ats": "greenhouse",
+"slug": "buildkite"
+},
+{
+"name": "Bynder",
+"ats": "ashby",
+"slug": "bynder"
+},
+{
+"name": "Calendly",
+"ats": "greenhouse",
+"slug": "calendly"
+},
+{
+"name": "Calm",
+"ats": "greenhouse",
+"slug": "calm"
+},
+{
+"name": "Canonical",
+"ats": "greenhouse",
+"slug": "canonical"
+},
+{
+"name": "Carta",
+"ats": "greenhouse",
+"slug": "carta"
+},
+{
+"name": "Carvana",
+"ats": "greenhouse",
+"slug": "carvana"
+},
+{
+"name": "Celonis",
+"ats": "greenhouse",
+"slug": "celonis"
+},
+{
+"name": "Cerebras",
+"ats": "ashby",
+"slug": "cerebras"
+},
+{
+"name": "Character.AI",
+"ats": "ashby",
+"slug": "character"
+},
+{
+"name": "Chime",
+"ats": "greenhouse",
+"slug": "chime"
+},
+{
+"name": "Circle",
+"ats": "ashby",
+"slug": "circle"
+},
+{
+"name": "CircleCI",
+"ats": "greenhouse",
+"slug": "circleci"
+},
+{
+"name": "Clerk",
+"ats": "ashby",
+"slug": "clerk"
+},
+{
+"name": "ClickHouse",
+"ats": "ashby",
+"slug": "clickhouse"
+},
+{
+"name": "ClickUp",
+"ats": "ashby",
+"slug": "clickup"
+},
+{
+"name": "Close",
+"ats": "ashby",
+"slug": "close"
+},
+{
+"name": "Cloudflare",
+"ats": "greenhouse",
+"slug": "cloudflare"
+},
+{
+"name": "Cloudinary",
+"ats": "lever",
+"slug": "cloudinary"
+},
+{
+"name": "CloudZero",
+"ats": "ashby",
+"slug": "cloudzero"
+},
+{
+"name": "Clubhouse",
+"ats": "ashby",
+"slug": "clubhouse"
+},
+{
+"name": "Cockroach Labs",
+"ats": "greenhouse",
+"slug": "cockroachlabs"
+},
+{
+"name": "Coder",
+"ats": "ashby",
+"slug": "coder"
+},
+{
+"name": "Cognition",
+"ats": "ashby",
+"slug": "cognition"
+},
+{
+"name": "Cohere",
+"ats": "ashby",
+"slug": "cohere"
+},
+{
+"name": "Coinbase",
+"ats": "greenhouse",
+"slug": "coinbase"
+},
+{
+"name": "Comet",
+"ats": "greenhouse",
+"slug": "comet"
+},
+{
+"name": "Commvault",
+"ats": "greenhouse",
+"slug": "commvault"
+},
+{
+"name": "Contentful",
+"ats": "greenhouse",
+"slug": "contentful"
+},
+{
+"name": "CoreWeave",
+"ats": "greenhouse",
+"slug": "coreweave"
+},
+{
+"name": "Cortex",
+"ats": "greenhouse",
+"slug": "cortex"
+},
+{
+"name": "Coupa",
+"ats": "lever",
+"slug": "coupa"
+},
+{
+"name": "Coupang",
+"ats": "greenhouse",
+"slug": "coupang"
+},
+{
+"name": "Coursera",
+"ats": "greenhouse",
+"slug": "coursera"
+},
+{
+"name": "CRED",
+"ats": "lever",
+"slug": "cred"
+},
+{
+"name": "Cribl",
+"ats": "greenhouse",
+"slug": "cribl"
+},
+{
+"name": "Crusoe",
+"ats": "ashby",
+"slug": "crusoe"
+},
+{
+"name": "Culture Amp",
+"ats": "greenhouse",
+"slug": "cultureamp"
+},
+{
+"name": "Cursor",
+"ats": "ashby",
+"slug": "cursor"
+},
+{
+"name": "Databricks",
+"ats": "greenhouse",
+"slug": "databricks"
+},
+{
+"name": "Datadog",
+"ats": "greenhouse",
+"slug": "datadog"
+},
+{
+"name": "Dataiku",
+"ats": "greenhouse",
+"slug": "dataiku"
+},
+{
+"name": "Decagon",
+"ats": "ashby",
+"slug": "decagon"
+},
+{
+"name": "Descope",
+"ats": "greenhouse",
+"slug": "descope"
+},
+{
+"name": "Descript",
+"ats": "greenhouse",
+"slug": "descript"
+},
+{
+"name": "Discord",
+"ats": "greenhouse",
+"slug": "discord"
+},
+{
+"name": "dLocal",
+"ats": "lever",
+"slug": "dlocal"
+},
+{
+"name": "Docker",
+"ats": "ashby",
+"slug": "docker"
+},
+{
+"name": "Domino Data Lab",
+"ats": "greenhouse",
+"slug": "dominodatalab"
+},
+{
+"name": "Doximity",
+"ats": "greenhouse",
+"slug": "doximity"
+},
+{
+"name": "Dremio",
+"ats": "greenhouse",
+"slug": "dremio"
+},
+{
+"name": "Dropbox",
+"ats": "greenhouse",
+"slug": "dropbox"
+},
+{
+"name": "Druva",
+"ats": "greenhouse",
+"slug": "druva"
+},
+{
+"name": "Duolingo",
+"ats": "greenhouse",
+"slug": "duolingo"
+},
+{
+"name": "Elastic",
+"ats": "greenhouse",
+"slug": "elastic"
+},
+{
+"name": "ElevenLabs",
+"ats": "ashby",
+"slug": "elevenlabs"
+},
+{
+"name": "Epic Games",
+"ats": "greenhouse",
+"slug": "epicgames"
+},
+{
+"name": "Etched",
+"ats": "ashby",
+"slug": "etched"
+},
+{
+"name": "Faire",
+"ats": "greenhouse",
+"slug": "faire"
+},
+{
+"name": "Farfetch",
+"ats": "ashby",
+"slug": "farfetch"
+},
+{
+"name": "Farfetch",
+"ats": "lever",
+"slug": "farfetch"
+},
+{
+"name": "Fastly",
+"ats": "greenhouse",
+"slug": "fastly"
+},
+{
+"name": "Figma",
+"ats": "greenhouse",
+"slug": "figma"
+},
+{
+"name": "Fireblocks",
+"ats": "greenhouse",
+"slug": "fireblocks"
+},
+{
+"name": "Fireworks",
+"ats": "ashby",
+"slug": "fireworks"
+},
+{
+"name": "Five9",
+"ats": "greenhouse",
+"slug": "five9"
+},
+{
+"name": "Fivetran",
+"ats": "greenhouse",
+"slug": "fivetran"
+},
+{
+"name": "Flexport",
+"ats": "greenhouse",
+"slug": "flexport"
+},
+{
+"name": "Flux",
+"ats": "ashby",
+"slug": "flux"
+},
+{
+"name": "FourKites",
+"ats": "greenhouse",
+"slug": "fourkites"
+},
+{
+"name": "FullStory",
+"ats": "ashby",
+"slug": "fullstory"
+},
+{
+"name": "Gemini",
+"ats": "greenhouse",
+"slug": "gemini"
+},
+{
+"name": "Ghost",
+"ats": "ashby",
+"slug": "ghost"
+},
+{
+"name": "Ghost",
+"ats": "greenhouse",
+"slug": "ghost"
+},
+{
+"name": "GitLab",
+"ats": "greenhouse",
+"slug": "gitlab"
+},
+{
+"name": "Glitch",
+"ats": "ashby",
+"slug": "glitch"
+},
+{
+"name": "GoDaddy",
+"ats": "greenhouse",
+"slug": "godaddy"
+},
+{
+"name": "Gopuff",
+"ats": "lever",
+"slug": "gopuff"
+},
+{
+"name": "Grafana Labs",
+"ats": "greenhouse",
+"slug": "grafanalabs"
+},
+{
+"name": "Groww",
+"ats": "greenhouse",
+"slug": "groww"
+},
+{
+"name": "Gusto",
+"ats": "greenhouse",
+"slug": "gusto"
+},
+{
+"name": "Harvey",
+"ats": "ashby",
+"slug": "harvey"
+},
+{
+"name": "Hex",
+"ats": "ashby",
+"slug": "hex"
+},
+{
+"name": "HeyGen",
+"ats": "greenhouse",
+"slug": "heygen"
+},
+{
+"name": "Hightouch",
+"ats": "ashby",
+"slug": "hightouch"
+},
+{
+"name": "Honeycomb",
+"ats": "greenhouse",
+"slug": "honeycomb"
+},
+{
+"name": "Hootsuite",
+"ats": "greenhouse",
+"slug": "hootsuite"
+},
+{
+"name": "Hopper",
+"ats": "ashby",
+"slug": "hopper"
+},
+{
+"name": "Imbue",
+"ats": "greenhouse",
+"slug": "imbue"
+},
+{
+"name": "Imply",
+"ats": "greenhouse",
+"slug": "imply"
+},
+{
+"name": "incident.io",
+"ats": "ashby",
+"slug": "incident"
+},
+{
+"name": "Instacart",
+"ats": "greenhouse",
+"slug": "instacart"
+},
+{
+"name": "Instructure",
+"ats": "ashby",
+"slug": "instructure"
+},
+{
+"name": "Intercom",
+"ats": "greenhouse",
+"slug": "intercom"
+},
+{
+"name": "Invisible",
+"ats": "greenhouse",
+"slug": "invisible"
+},
+{
+"name": "Iterable",
+"ats": "ashby",
+"slug": "iterable"
+},
+{
+"name": "Jam City",
+"ats": "lever",
+"slug": "jamcity"
+},
+{
+"name": "JetBrains",
+"ats": "greenhouse",
+"slug": "jetbrains"
+},
+{
+"name": "JFrog",
+"ats": "greenhouse",
+"slug": "jfrog"
+},
+{
+"name": "Justworks",
+"ats": "greenhouse",
+"slug": "justworks"
+},
+{
+"name": "Kavak",
+"ats": "lever",
+"slug": "kavak"
+},
+{
+"name": "Khan Academy",
+"ats": "greenhouse",
+"slug": "khanacademy"
+},
+{
+"name": "Klaviyo",
+"ats": "greenhouse",
+"slug": "klaviyo"
+},
+{
+"name": "Kong",
+"ats": "ashby",
+"slug": "kong"
+},
+{
+"name": "Krafton",
+"ats": "greenhouse",
+"slug": "krafton"
+},
+{
+"name": "Labelbox",
+"ats": "greenhouse",
+"slug": "labelbox"
+},
+{
+"name": "Lambda",
+"ats": "ashby",
+"slug": "lambda"
+},
+{
+"name": "LangChain",
+"ats": "ashby",
+"slug": "langchain"
+},
+{
+"name": "LastPass",
+"ats": "greenhouse",
+"slug": "lastpass"
+},
+{
+"name": "Lattice",
+"ats": "greenhouse",
+"slug": "lattice"
+},
+{
+"name": "LaunchDarkly",
+"ats": "greenhouse",
+"slug": "launchdarkly"
+},
+{
+"name": "Lemonade",
+"ats": "ashby",
+"slug": "lemonade"
+},
+{
+"name": "Lightdash",
+"ats": "ashby",
+"slug": "lightdash"
+},
+{
+"name": "Lightmatter",
+"ats": "greenhouse",
+"slug": "lightmatter"
+},
+{
+"name": "Lightspeed",
+"ats": "ashby",
+"slug": "lightspeed"
+},
+{
+"name": "Linear",
+"ats": "ashby",
+"slug": "linear"
+},
+{
+"name": "Livekit",
+"ats": "ashby",
+"slug": "livekit"
+},
+{
+"name": "LlamaIndex",
+"ats": "ashby",
+"slug": "llamaindex"
+},
+{
+"name": "LogRocket",
+"ats": "lever",
+"slug": "logrocket"
+},
+{
+"name": "Lyft",
+"ats": "greenhouse",
+"slug": "lyft"
+},
+{
+"name": "Masterclass",
+"ats": "greenhouse",
+"slug": "masterclass"
+},
+{
+"name": "Materialize",
+"ats": "ashby",
+"slug": "materialize"
+},
+{
+"name": "Mattermost",
+"ats": "greenhouse",
+"slug": "mattermost"
+},
+{
+"name": "Medium",
+"ats": "greenhouse",
+"slug": "medium"
+},
+{
+"name": "Meesho",
+"ats": "lever",
+"slug": "meesho"
+},
+{
+"name": "Metabase",
+"ats": "lever",
+"slug": "metabase"
+},
+{
+"name": "Midjourney",
+"ats": "ashby",
+"slug": "midjourney"
+},
+{
+"name": "Mindtickle",
+"ats": "lever",
+"slug": "mindtickle"
+},
+{
+"name": "Miro",
+"ats": "ashby",
+"slug": "miro"
+},
+{
+"name": "Mixpanel",
+"ats": "greenhouse",
+"slug": "mixpanel"
+},
+{
+"name": "Modal",
+"ats": "ashby",
+"slug": "modal"
+},
+{
+"name": "Mollie",
+"ats": "ashby",
+"slug": "mollie"
+},
+{
+"name": "MongoDB",
+"ats": "greenhouse",
+"slug": "mongodb"
+},
+{
+"name": "Monzo",
+"ats": "greenhouse",
+"slug": "monzo"
+},
+{
+"name": "Moonshot",
+"ats": "ashby",
+"slug": "moonshot"
+},
+{
+"name": "Moonshot",
+"ats": "greenhouse",
+"slug": "moonshot"
+},
+{
+"name": "MotherDuck",
+"ats": "ashby",
+"slug": "motherduck"
+},
+{
+"name": "Motive",
+"ats": "greenhouse",
+"slug": "motive"
+},
+{
+"name": "Mozilla",
+"ats": "greenhouse",
+"slug": "mozilla"
+},
+{
+"name": "Mux",
+"ats": "ashby",
+"slug": "mux"
+},
+{
+"name": "N26",
+"ats": "greenhouse",
+"slug": "n26"
+},
+{
+"name": "Navi",
+"ats": "ashby",
+"slug": "navi"
+},
+{
+"name": "Neon",
+"ats": "ashby",
+"slug": "neon"
+},
+{
+"name": "NerdWallet",
+"ats": "ashby",
+"slug": "nerdwallet"
+},
+{
+"name": "Netlify",
+"ats": "greenhouse",
+"slug": "netlify"
+},
+{
+"name": "Netskope",
+"ats": "greenhouse",
+"slug": "netskope"
+},
+{
+"name": "New Relic",
+"ats": "greenhouse",
+"slug": "newrelic"
+},
+{
+"name": "Nextdoor",
+"ats": "greenhouse",
+"slug": "nextdoor"
+},
+{
+"name": "Nium",
+"ats": "lever",
+"slug": "nium"
+},
+{
+"name": "Notion",
+"ats": "ashby",
+"slug": "notion"
+},
+{
+"name": "Nubank",
+"ats": "ashby",
+"slug": "nubank"
+},
+{
+"name": "Nuro",
+"ats": "greenhouse",
+"slug": "nuro"
+},
+{
+"name": "Okta",
+"ats": "greenhouse",
+"slug": "okta"
+},
+{
+"name": "OpenAI",
+"ats": "ashby",
+"slug": "openai"
+},
+{
+"name": "OpsLevel",
+"ats": "ashby",
+"slug": "opslevel"
+},
+{
+"name": "Orca Security",
+"ats": "greenhouse",
+"slug": "orcasecurity"
+},
+{
+"name": "Oscar",
+"ats": "greenhouse",
+"slug": "oscar"
+},
+{
+"name": "Oura",
+"ats": "greenhouse",
+"slug": "oura"
+},
+{
+"name": "Outreach",
+"ats": "lever",
+"slug": "outreach"
+},
+{
+"name": "Oyster",
+"ats": "ashby",
+"slug": "oyster"
+},
+{
+"name": "Paddle",
+"ats": "ashby",
+"slug": "paddle"
+},
+{
+"name": "PagerDuty",
+"ats": "greenhouse",
+"slug": "pagerduty"
+},
+{
+"name": "Palantir",
+"ats": "lever",
+"slug": "palantir"
+},
+{
+"name": "Patreon",
+"ats": "ashby",
+"slug": "patreon"
+},
+{
+"name": "Payoneer",
+"ats": "greenhouse",
+"slug": "payoneer"
+},
+{
+"name": "Paytm",
+"ats": "lever",
+"slug": "paytm"
+},
+{
+"name": "Peloton",
+"ats": "greenhouse",
+"slug": "peloton"
+},
+{
+"name": "Pendo",
+"ats": "greenhouse",
+"slug": "pendo"
+},
+{
+"name": "Perplexity",
+"ats": "ashby",
+"slug": "perplexity"
+},
+{
+"name": "Pika",
+"ats": "ashby",
+"slug": "pika"
+},
+{
+"name": "Pinecone",
+"ats": "ashby",
+"slug": "pinecone"
+},
+{
+"name": "Ping Identity",
+"ats": "greenhouse",
+"slug": "pingidentity"
+},
+{
+"name": "PingCAP",
+"ats": "greenhouse",
+"slug": "pingcap"
+},
+{
+"name": "Pinterest",
+"ats": "greenhouse",
+"slug": "pinterest"
+},
+{
+"name": "Pipedrive",
+"ats": "lever",
+"slug": "pipedrive"
+},
+{
+"name": "PlanetScale",
+"ats": "greenhouse",
+"slug": "planetscale"
+},
+{
+"name": "Platform sh",
+"ats": "greenhouse",
+"slug": "platformsh"
+},
+{
+"name": "Pleo",
+"ats": "ashby",
+"slug": "pleo"
+},
+{
+"name": "Poolside",
+"ats": "ashby",
+"slug": "poolside"
+},
+{
+"name": "Porter",
+"ats": "greenhouse",
+"slug": "porter"
+},
+{
+"name": "Porter",
+"ats": "lever",
+"slug": "porter"
+},
+{
+"name": "Poshmark",
+"ats": "ashby",
+"slug": "poshmark"
+},
+{
+"name": "PostHog",
+"ats": "ashby",
+"slug": "posthog"
+},
+{
+"name": "Prefect",
+"ats": "ashby",
+"slug": "prefect"
+},
+{
+"name": "Project44",
+"ats": "greenhouse",
+"slug": "project44"
+},
+{
+"name": "Pure Storage",
+"ats": "greenhouse",
+"slug": "purestorage"
+},
+{
+"name": "Qualtrics",
+"ats": "greenhouse",
+"slug": "qualtrics"
+},
+{
+"name": "Quora",
+"ats": "ashby",
+"slug": "quora"
+},
+{
+"name": "Railway",
+"ats": "ashby",
+"slug": "railway"
+},
+{
+"name": "Ramp",
+"ats": "ashby",
+"slug": "ramp"
+},
+{
+"name": "Reddit",
+"ats": "greenhouse",
+"slug": "reddit"
+},
+{
+"name": "Redis",
+"ats": "ashby",
+"slug": "redis"
+},
+{
+"name": "Relativity",
+"ats": "greenhouse",
+"slug": "relativity"
+},
+{
+"name": "Remote",
+"ats": "greenhouse",
+"slug": "remote"
+},
+{
+"name": "Render",
+"ats": "ashby",
+"slug": "render"
+},
+{
+"name": "Replit",
+"ats": "ashby",
+"slug": "replit"
+},
+{
+"name": "Riot Games",
+"ats": "greenhouse",
+"slug": "riotgames"
+},
+{
+"name": "Ripple",
+"ats": "greenhouse",
+"slug": "ripple"
+},
+{
+"name": "Roadie",
+"ats": "greenhouse",
+"slug": "roadie"
+},
+{
+"name": "Robinhood",
+"ats": "greenhouse",
+"slug": "robinhood"
+},
+{
+"name": "Roblox",
+"ats": "greenhouse",
+"slug": "roblox"
+},
+{
+"name": "Rocket Chat",
+"ats": "greenhouse",
+"slug": "rocketchat"
+},
+{
+"name": "Rocket Lab",
+"ats": "greenhouse",
+"slug": "rocketlab"
+},
+{
+"name": "Rover",
+"ats": "lever",
+"slug": "rover"
+},
+{
+"name": "Rubrik",
+"ats": "greenhouse",
+"slug": "rubrik"
+},
+{
+"name": "Runway",
+"ats": "ashby",
+"slug": "runway"
+},
+{
+"name": "Salesloft",
+"ats": "greenhouse",
+"slug": "salesloft"
+},
+{
+"name": "Samsara",
+"ats": "greenhouse",
+"slug": "samsara"
+},
+{
+"name": "Sanity",
+"ats": "ashby",
+"slug": "sanity"
+},
+{
+"name": "Saviynt",
+"ats": "lever",
+"slug": "saviynt"
+},
+{
+"name": "Scale AI",
+"ats": "greenhouse",
+"slug": "scaleai"
+},
+{
+"name": "Scaleway",
+"ats": "lever",
+"slug": "scaleway"
+},
+{
+"name": "Scopely",
+"ats": "greenhouse",
+"slug": "scopely"
+},
+{
+"name": "Seldon",
+"ats": "ashby",
+"slug": "seldon"
+},
+{
+"name": "Sentry",
+"ats": "ashby",
+"slug": "sentry"
+},
+{
+"name": "Shield AI",
+"ats": "ashby",
+"slug": "shieldai"
+},
+{
+"name": "Shield AI",
+"ats": "lever",
+"slug": "shieldai"
+},
+{
+"name": "Sierra",
+"ats": "ashby",
+"slug": "sierra"
+},
+{
+"name": "Sigma Computing",
+"ats": "greenhouse",
+"slug": "sigmacomputing"
+},
+{
+"name": "SingleStore",
+"ats": "greenhouse",
+"slug": "singlestore"
+},
+{
+"name": "Skydio",
+"ats": "ashby",
+"slug": "skydio"
+},
+{
+"name": "Slice",
+"ats": "greenhouse",
+"slug": "slice"
+},
+{
+"name": "Smartsheet",
+"ats": "greenhouse",
+"slug": "smartsheet"
+},
+{
+"name": "Snowflake",
+"ats": "ashby",
+"slug": "snowflake"
+},
+{
+"name": "Snyk",
+"ats": "ashby",
+"slug": "snyk"
+},
+{
+"name": "SoFi",
+"ats": "greenhouse",
+"slug": "sofi"
+},
+{
+"name": "SonarSource",
+"ats": "lever",
+"slug": "sonarsource"
+},
+{
+"name": "Sonatype",
+"ats": "lever",
+"slug": "sonatype"
+},
+{
+"name": "SpaceX",
+"ats": "greenhouse",
+"slug": "spacex"
+},
+{
+"name": "Spire",
+"ats": "greenhouse",
+"slug": "spire"
+},
+{
+"name": "Spotify",
+"ats": "lever",
+"slug": "spotify"
+},
+{
+"name": "Sprout Social",
+"ats": "greenhouse",
+"slug": "sproutsocial"
+},
+{
+"name": "Squarespace",
+"ats": "greenhouse",
+"slug": "squarespace"
+},
+{
+"name": "Stability AI",
+"ats": "greenhouse",
+"slug": "stabilityai"
+},
+{
+"name": "StackBlitz",
+"ats": "greenhouse",
+"slug": "stackblitz"
+},
+{
+"name": "Starburst",
+"ats": "greenhouse",
+"slug": "starburst"
+},
+{
+"name": "Storyblok",
+"ats": "greenhouse",
+"slug": "storyblok"
+},
+{
+"name": "Strava",
+"ats": "ashby",
+"slug": "strava"
+},
+{
+"name": "StreamNative",
+"ats": "greenhouse",
+"slug": "streamnative"
+},
+{
+"name": "Stripe",
+"ats": "greenhouse",
+"slug": "stripe"
+},
+{
+"name": "Substack",
+"ats": "ashby",
+"slug": "substack"
+},
+{
+"name": "Sumo Logic",
+"ats": "greenhouse",
+"slug": "sumologic"
+},
+{
+"name": "SumUp",
+"ats": "greenhouse",
+"slug": "sumup"
+},
+{
+"name": "Suno",
+"ats": "ashby",
+"slug": "suno"
+},
+{
+"name": "Supabase",
+"ats": "ashby",
+"slug": "supabase"
+},
+{
+"name": "Supercell",
+"ats": "ashby",
+"slug": "supercell"
+},
+{
+"name": "Surge AI",
+"ats": "ashby",
+"slug": "surge-ai"
+},
+{
+"name": "SurveyMonkey",
+"ats": "ashby",
+"slug": "surveymonkey"
+},
+{
+"name": "Synthesia",
+"ats": "ashby",
+"slug": "synthesia"
+},
+{
+"name": "Tailscale",
+"ats": "greenhouse",
+"slug": "tailscale"
+},
+{
+"name": "Talkspace",
+"ats": "greenhouse",
+"slug": "talkspace"
+},
+{
+"name": "TaskRabbit",
+"ats": "greenhouse",
+"slug": "taskrabbit"
+},
+{
+"name": "TCS",
+"ats": "greenhouse",
+"slug": "tcs"
+},
+{
+"name": "Temporal",
+"ats": "ashby",
+"slug": "temporal"
+},
+{
+"name": "Tenstorrent",
+"ats": "greenhouse",
+"slug": "tenstorrent"
+},
+{
+"name": "Thoughtworks",
+"ats": "greenhouse",
+"slug": "thoughtworks"
+},
+{
+"name": "Thumbtack",
+"ats": "ashby",
+"slug": "thumbtack"
+},
+{
+"name": "Thunes",
+"ats": "greenhouse",
+"slug": "thunes"
+},
+{
+"name": "Tigera",
+"ats": "greenhouse",
+"slug": "tigera"
+},
+{
+"name": "Toast",
+"ats": "greenhouse",
+"slug": "toast"
+},
+{
+"name": "Together AI",
+"ats": "greenhouse",
+"slug": "togetherai"
+},
+{
+"name": "Tonal",
+"ats": "ashby",
+"slug": "tonal"
+},
+{
+"name": "Toptal",
+"ats": "lever",
+"slug": "toptal"
+},
+{
+"name": "Tripadvisor",
+"ats": "greenhouse",
+"slug": "tripadvisor"
+},
+{
+"name": "Twilio",
+"ats": "greenhouse",
+"slug": "twilio"
+},
+{
+"name": "Twitch",
+"ats": "greenhouse",
+"slug": "twitch"
+},
+{
+"name": "Uber Freight",
+"ats": "greenhouse",
+"slug": "uberfreight"
+},
+{
+"name": "Udemy",
+"ats": "greenhouse",
+"slug": "udemy"
+},
+{
+"name": "Udio",
+"ats": "greenhouse",
+"slug": "udio"
+},
+{
+"name": "UiPath",
+"ats": "ashby",
+"slug": "uipath"
+},
+{
+"name": "Upbound",
+"ats": "greenhouse",
+"slug": "upbound"
+},
+{
+"name": "Vantage",
+"ats": "ashby",
+"slug": "vantage"
+},
+{
+"name": "Vast ai",
+"ats": "ashby",
+"slug": "vastai"
+},
+{
+"name": "Veracode",
+"ats": "greenhouse",
+"slug": "veracode"
+},
+{
+"name": "Vercel",
+"ats": "greenhouse",
+"slug": "vercel"
+},
+{
+"name": "Vonage",
+"ats": "greenhouse",
+"slug": "vonage"
+},
+{
+"name": "Vultr",
+"ats": "ashby",
+"slug": "vultr"
+},
+{
+"name": "Wasabi",
+"ats": "greenhouse",
+"slug": "wasabi"
+},
+{
+"name": "Waymo",
+"ats": "greenhouse",
+"slug": "waymo"
+},
+{
+"name": "Wayve",
+"ats": "ashby",
+"slug": "wayve"
+},
+{
+"name": "Wealthfront",
+"ats": "lever",
+"slug": "wealthfront"
+},
+{
+"name": "Weaviate",
+"ats": "ashby",
+"slug": "weaviate"
+},
+{
+"name": "Webflow",
+"ats": "ashby",
+"slug": "webflow"
+},
+{
+"name": "Weights and Biases",
+"ats": "greenhouse",
+"slug": "weights_and_biases"
+},
+{
+"name": "Whoop",
+"ats": "ashby",
+"slug": "whoop"
+},
+{
+"name": "Wikimedia",
+"ats": "greenhouse",
+"slug": "wikimedia"
+},
+{
+"name": "Wise",
+"ats": "greenhouse",
+"slug": "wise"
+},
+{
+"name": "Workato",
+"ats": "greenhouse",
+"slug": "workato"
+},
+{
+"name": "WorkOS",
+"ats": "ashby",
+"slug": "workos"
+},
+{
+"name": "Wrike",
+"ats": "greenhouse",
+"slug": "wrike"
+},
+{
+"name": "Writer",
+"ats": "ashby",
+"slug": "writer"
+},
+{
+"name": "xAI",
+"ats": "greenhouse",
+"slug": "xai"
+},
+{
+"name": "Yugabyte",
+"ats": "greenhouse",
+"slug": "yugabyte"
+},
+{
+"name": "Zapier",
+"ats": "ashby",
+"slug": "zapier"
+},
+{
+"name": "Zeta",
+"ats": "lever",
+"slug": "zeta"
+},
+{
+"name": "Zocdoc",
+"ats": "greenhouse",
+"slug": "zocdoc"
+},
+{
+"name": "ZoomInfo",
+"ats": "greenhouse",
+"slug": "zoominfo"
+},
+{
+"name": "Zoox",
+"ats": "lever",
+"slug": "zoox"
+},
+{
+"name": "Zscaler",
+"ats": "greenhouse",
+"slug": "zscaler"
+},
+{
+"name": "Zuora",
+"ats": "greenhouse",
+"slug": "zuora"
+}
+]

@@ -28,6 +28,15 @@ Each job is tagged by what Apply does: **direct** (straight to the employer or a
 (We Work Remotely, Jobicy) or **free to apply** (Himalayas: applying goes through a free Himalayas account and the free plan has no payment step; checked signed in on 2026-10-19). The page shows direct and free-to-apply jobs by default. RemoteOK is deliberately not used,
 because its Apply button leads to a paid Premium page.
 
+## Company career pages
+`companies.json` lists ~340 company job boards on Greenhouse, Lever and Ashby (the public job-board feeds companies use for their own
+Careers pages: Stripe, Databricks, Anthropic, OpenAI, Cloudflare, Datadog, ...). `app.py` reads each board, keeps **engineering roles that are
+remote or in an Indian city** (a place that names another country or city is dropped), and adds them as the `Company careers` source. Apply goes
+straight to the employer's own posting. Career pages mostly list employee jobs, so these are marked full-time unless the posting says
+otherwise: tick Full-time under Hours (or click the "full-time" chip) to see them. They refresh every 4 hours. Add a company by adding
+its board slug to `companies.json` (the slug is in its careers URL, e.g. `boards.greenhouse.io/<slug>`).
+Not covered: companies on other systems (Workday, SuccessFactors, Taleo, custom sites) and boards not in the list.
+
 ## Roles
 Core skills are Java / Spring / microservices, AI (agents, LLMs, RAG) and cloud / DevOps / SRE (Kubernetes, Terraform / IaC, CI/CD, AWS / Azure / GCP).
 Each job also gets `roles` (devops, backend, ai, fullstack, data, other) from its title and technologies, which drives the **Role** filter.

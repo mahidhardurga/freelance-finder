@@ -420,17 +420,17 @@ const KEYS = { filters: "ff_filters_v2", seen: "ff_seen_v1", track: "ff_track_v1
 
 /* ------------------------------------------------------------------ filters */
 const DEFAULT_COMMIT = ["part_time", "contract"];
-const DEFAULTS = () => ({ commit: [...DEFAULT_COMMIT], sites: null, stack: [], stackAll: false, roles: [], anywhere: false, india: false, usd: false, contract: false, email: false,
+const DEFAULTS = () => ({ commit: [...DEFAULT_COMMIT], sites: null, stack: [], stackAll: false, roles: [], companies: [], anywhere: false, india: false, usd: false, contract: false, email: false,
                           freeOnly: true, restricted: false, cities: [], modes: [], currencies: [] });
 let F = DEFAULTS();
-const UI = { tab: "discover", sort: "best", q: "", selected: null, shown: 50, open: {}, techAll: false, techQ: "" };
+const UI = { tab: "discover", sort: "best", q: "", selected: null, shown: 50, open: {}, techAll: false, techQ: "", coAll: false, coQ: "" };
 let data = null, jobIndex = new Map(), seen = new Set(), firstRun = true, tracker = {}, profile = {};
 
 const strs = v => Array.isArray(v) ? v.filter(x => typeof x === "string") : [];
 function sanitizeFilters(o) {
   const d = DEFAULTS(); if (!o || typeof o !== "object") return d;
   for (const k of ["anywhere", "india", "usd", "contract", "email", "freeOnly", "restricted", "stackAll"]) if (typeof o[k] === "boolean") d[k] = o[k];
-  for (const k of ["commit", "stack", "roles", "cities", "modes", "currencies"]) if (Array.isArray(o[k])) d[k] = strs(o[k]);
+  for (const k of ["commit", "stack", "roles", "companies", "cities", "modes", "currencies"]) if (Array.isArray(o[k])) d[k] = strs(o[k]).slice(0, 40);
   d.roles = d.roles.filter(r => ROLE_ORDER.includes(r));
   d.commit = d.commit.filter(c => ["part_time", "contract", "unspecified", "full_time"].includes(c));
   d.sites = Array.isArray(o.sites) && strs(o.sites).length ? strs(o.sites) : null;
@@ -538,6 +538,7 @@ function pool(skip) {
   return data.jobs.filter(j => (picking ? j.eng !== false : j.dev)
     && (skip === "stack" || stackOk(j)) && (!F.india || j.india)
     && (skip === "roles" || !F.roles.length || F.roles.some(r => (j.roles || ["other"]).includes(r)))
+    && (skip === "companies" || !F.companies.length || F.companies.includes(cleanCompany(j)))
     && (skip === "where" || whereOk(j))
     && (skip === "commit" || !F.commit.length || F.commit.includes(j.commit || "unspecified"))
     && (skip === "sites" || !F.sites || F.sites.includes(j.source))
@@ -626,6 +627,8 @@ function updateStats() {
   };
   box.append(mk("jobs match", now.length));
   box.append(mk("part-time", part, () => { change(f => { f.commit = ["part_time"]; }); UI.tab = "discover"; renderTabs(); }, part > 0));
+  const full = base.filter(j => j.commit === "full_time").length;
+  box.append(mk("full-time", full, () => { change(f => { f.commit = ["full_time"]; }); UI.tab = "discover"; renderTabs(); }));
   const ops = pool("roles").filter(j => (j.roles || []).includes("devops")).length;   // what you would get with your current filters (incl. Hours)
   box.append(mk("DevOps / SRE", ops, () => change(f => { f.roles = ["devops"]; })));
   box.append(mk("paid in USD", usd, () => change(f => { f.usd = true; })));
@@ -672,7 +675,7 @@ function switchRow(label, key, hint) {
   b.append(l, el("span", "track")); b.addEventListener("click", () => change(f => { f[key] = !f[key]; })); return b;
 }
 const toggleIn = (arr, v, on) => { const i = arr.indexOf(v); if (on && i < 0) arr.push(v); else if (!on && i >= 0) arr.splice(i, 1); };
-let techFindEl = null;
+let techFindEl = null, companyFindEl = null;
 function renderSidebar() {
   const body = $("#filterBody"), scroller = $("#sidebar"), top = scroller.scrollTop; body.replaceChildren();
   // Hours
@@ -715,6 +718,22 @@ function renderSidebar() {
   }
   if (!q) { const m = el("button", "link-btn", UI.techAll ? "Show fewer" : "Show all technologies"); m.type = "button"; m.style.justifySelf = "start"; m.style.marginTop = "6px"; m.addEventListener("click", () => { UI.techAll = !UI.techAll; renderSidebar(); }); b.append(m); }
   body.append(d);
+  // Company (hundreds of employers now, so: top few + a search box)
+  const coCount = countBy(pool("companies"), j => [cleanCompany(j)]);
+  [d, b] = section("company", "Company", false, F.companies.length || "");
+  if (!companyFindEl) { companyFindEl = el("input", "tech-find"); companyFindEl.type = "search"; companyFindEl.placeholder = "Find a company…"; companyFindEl.setAttribute("aria-label", "Find a company");
+    companyFindEl.addEventListener("input", () => { UI.coQ = companyFindEl.value; renderSidebar(); companyFindEl.focus(); }); }
+  companyFindEl.value = UI.coQ; b.append(companyFindEl);
+  const cq = UI.coQ.trim().toLowerCase(), coAll = [...new Set([...coCount.keys(), ...F.companies])].sort((x, y) => (coCount.get(y) || 0) - (coCount.get(x) || 0) || x.localeCompare(y));
+  const coShown = cq ? coAll.filter(c => c.toLowerCase().includes(cq)).slice(0, 60) : (UI.coAll ? coAll.slice(0, 120) : [...new Set([...F.companies, ...coAll.slice(0, 12)])]);
+  const coChips = el("div", "chipset");
+  coShown.forEach(c => { const x = el("button", "chip-btn" + ((coCount.get(c) || 0) === 0 && !F.companies.includes(c) ? " dim" : "")); x.type = "button"; x.setAttribute("aria-pressed", String(F.companies.includes(c)));
+    x.append(el("span", null, c), el("small", null, String(coCount.get(c) || 0))); x.addEventListener("click", () => change(f => toggleIn(f.companies, c, !f.companies.includes(c)))); coChips.append(x); });
+  b.append(coChips);
+  if (!coShown.length) b.append(el("p", "note-small", cq ? "No company matches “" + UI.coQ + "”." : "No companies match your other filters."));
+  if (!cq && coAll.length > 12) { const m = el("button", "link-btn", UI.coAll ? "Show fewer" : "Show more (" + Math.min(coAll.length, 120) + " of " + coAll.length + ")"); m.type = "button"; m.style.justifySelf = "start"; m.style.marginTop = "6px";
+    m.addEventListener("click", () => { UI.coAll = !UI.coAll; renderSidebar(); }); b.append(m); }
+  body.append(d);
   // Place + pay
   const wBase = pool("where");
   const nWhere = F.cities.length + F.modes.length + F.currencies.length;
@@ -746,6 +765,7 @@ function renderChips() {
   const add = (label, remove) => { const c = el("span", "achip"); c.append(el("span", null, label)); const x = el("button"); x.type = "button"; x.setAttribute("aria-label", "Remove " + label); x.append(icon("x", 12)); x.addEventListener("click", () => change(remove)); c.append(x); box.append(c); };
   if (!arraysEq(F.commit, DEFAULT_COMMIT)) add("Hours: " + (F.commit.length ? F.commit.map(k => COMMIT_LABEL[k]).join(" + ") : "any"), f => { f.commit = [...DEFAULT_COMMIT]; });
   F.roles.forEach(r => add(ROLE_LABEL[r], f => toggleIn(f.roles, r, false)));
+  F.companies.forEach(c => add(c, f => toggleIn(f.companies, c, false)));
   const flags = { anywhere: "Remote anywhere", india: "India-based", usd: "Paid in USD", contract: "Contract wording", email: "Has email", restricted: "Incl. restricted" };
   for (const [k, l] of Object.entries(flags)) if (F[k]) add(l, f => { f[k] = false; });
   if (!F.freeOnly) add("Incl. sign-up walls", f => { f.freeOnly = true; });
@@ -978,7 +998,7 @@ function autoSelect() {
   if (listItems.length) select(listItems[0].id, { quiet: true }); else { UI.selected = null; renderDetail(); }
 }
 function setTheme(t) { document.documentElement.dataset.theme = t; try { localStorage.setItem("ff_theme", t); } catch (e) {} put($("#themeBtn"), t === "dark" ? "sun" : "moon"); }
-function resetAll() { F = DEFAULTS(); UI.q = ""; $("#q").value = ""; UI.shown = 50; UI.techQ = ""; persist(); renderAll(); }
+function resetAll() { F = DEFAULTS(); UI.q = ""; $("#q").value = ""; UI.shown = 50; UI.techQ = ""; UI.coQ = ""; persist(); renderAll(); }
 function renderAll() { if (!data) return; updateStats(); renderSidebar(); renderChips(); renderList(); autoSelect(); updateTabCounts(); renderTabs(); $("#sort").value = UI.sort; }
 
 /* ------------------------------------------------------------------ data loading */
